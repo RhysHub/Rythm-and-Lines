@@ -68,6 +68,9 @@ public class TrickAnimator : MonoBehaviour
 
     private void Awake()
     {
+        // Auto-find references if not assigned
+        AutoFindReferences();
+
         // Setup default curves if not configured or invalid
         if (popCurve == null || popCurve.keys.Length < 2)
         {
@@ -87,6 +90,89 @@ public class TrickAnimator : MonoBehaviour
         if (rotationCurve == null || rotationCurve.keys.Length < 2)
         {
             rotationCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+        }
+    }
+
+    private void AutoFindReferences()
+    {
+        // Find TrickInputSystem if not assigned
+        if (trickInputSystem == null)
+        {
+            trickInputSystem = FindObjectOfType<TrickInputSystem>();
+            if (trickInputSystem != null && debugMode)
+                Debug.Log("[TrickAnimator] Auto-found TrickInputSystem");
+        }
+
+        // Find BoardVisualController if not assigned
+        if (boardController == null)
+        {
+            boardController = GetComponent<BoardVisualController>();
+            if (boardController == null)
+                boardController = FindObjectOfType<BoardVisualController>();
+            if (boardController != null && debugMode)
+                Debug.Log("[TrickAnimator] Auto-found BoardVisualController");
+        }
+
+        // Find board visuals if not assigned
+        if (boardVisuals == null)
+        {
+            // Try to find BoardVisuals child
+            Transform found = transform.Find("BoardVisuals");
+            if (found == null)
+            {
+                // Search in children
+                foreach (Transform child in transform)
+                {
+                    if (child.name.Contains("BoardVisuals") || child.name.Contains("Deck"))
+                    {
+                        found = child;
+                        break;
+                    }
+                }
+            }
+
+            // Try SkateboardBuilder
+            if (found == null)
+            {
+                var builder = GetComponent<SkateboardBuilder>();
+                if (builder != null && builder.BoardVisuals != null)
+                {
+                    found = builder.BoardVisuals;
+                }
+            }
+
+            // Try to find anywhere in scene
+            if (found == null)
+            {
+                var allBuilders = FindObjectsOfType<SkateboardBuilder>();
+                foreach (var builder in allBuilders)
+                {
+                    if (builder.BoardVisuals != null)
+                    {
+                        found = builder.BoardVisuals;
+                        break;
+                    }
+                }
+            }
+
+            // Last resort: find any object named BoardVisuals
+            if (found == null)
+            {
+                var go = GameObject.Find("BoardVisuals");
+                if (go != null)
+                    found = go.transform;
+            }
+
+            if (found != null)
+            {
+                boardVisuals = found;
+                if (debugMode)
+                    Debug.Log($"[TrickAnimator] Auto-found boardVisuals: {found.name}");
+            }
+            else
+            {
+                Debug.LogError("[TrickAnimator] Could not find boardVisuals! Please assign manually or ensure SkateboardBuilder has built the board.");
+            }
         }
     }
 
