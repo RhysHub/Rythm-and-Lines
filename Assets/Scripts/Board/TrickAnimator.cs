@@ -19,10 +19,13 @@ public class TrickAnimator : MonoBehaviour
 
     [Header("Animation Settings")]
     [Tooltip("Default animation duration")]
-    public float defaultDuration = 0.5f;
+    public float defaultDuration = 0.6f;
 
     [Tooltip("Default pop height")]
-    public float defaultPopHeight = 0.3f;
+    public float defaultPopHeight = 0.5f;
+
+    [Tooltip("Always pop even for grounded tricks")]
+    public bool alwaysPop = true;
 
     [Tooltip("Pop height curve (0-1 normalized time)")]
     public AnimationCurve popCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 0f);
@@ -39,6 +42,9 @@ public class TrickAnimator : MonoBehaviour
 
     [Tooltip("Degrees for a 360 shuvit (tre flip)")]
     public float shuvit360Rotation = 360f;
+
+    [Tooltip("Small rotation for tricks with no explicit rotation (like Ollie)")]
+    public float minVisibleRotation = 15f;
 
     [Header("Debug")]
     public bool debugMode = true;
@@ -119,15 +125,19 @@ public class TrickAnimator : MonoBehaviour
     private void OnTrickMatched(TrickMatchResult result)
     {
         if (result == null || !result.matched || result.trick == null)
+        {
+            if (debugMode)
+                Debug.Log("[TrickAnimator] OnTrickMatched called but result invalid");
             return;
-
-        // Generate animation from the trick definition
-        TrickAnimationData animData = GenerateAnimationFromTrick(result.trick, result.accuracy);
+        }
 
         if (debugMode)
         {
-            Debug.Log($"[TrickAnimator] Playing animation: {animData}");
+            Debug.Log($"<color=yellow>[TrickAnimator] TRICK MATCHED: {result.trick.trickName}</color>");
         }
+
+        // Generate animation from the trick definition
+        TrickAnimationData animData = GenerateAnimationFromTrick(result.trick, result.accuracy);
 
         StartAnimation(animData);
     }
@@ -143,8 +153,8 @@ public class TrickAnimator : MonoBehaviour
         anim.duration = defaultDuration;
         anim.popHeight = defaultPopHeight;
 
-        // Determine if this is a grounded trick
-        anim.hasPop = !trick.requiresGrounded;
+        // Always pop for visual feedback (unless explicitly disabled)
+        anim.hasPop = alwaysPop || !trick.requiresGrounded;
 
         // Analyze each input step to determine rotation
         foreach (InputStep step in trick.inputSequence)
@@ -152,9 +162,18 @@ public class TrickAnimator : MonoBehaviour
             AnalyzeInputStep(step, ref anim);
         }
 
-        // Scale animation intensity by accuracy (optional)
-        // Higher accuracy = fuller animation
-        // anim.popHeight *= (0.8f + accuracy * 0.2f);
+        // If no rotation was added, add a small Z rotation for visual feedback (board tilts)
+        if (!anim.HasRotation)
+        {
+            anim.zRotation = minVisibleRotation;
+        }
+
+        if (debugMode)
+        {
+            Debug.Log($"[TrickAnimator] Generated animation for {trick.trickName}: " +
+                     $"Pop={anim.hasPop}, Height={anim.popHeight}, " +
+                     $"Rot=({anim.xRotation}, {anim.yRotation}, {anim.zRotation})");
+        }
 
         return anim;
     }
@@ -317,17 +336,32 @@ public class TrickAnimator : MonoBehaviour
     public void StartAnimation(TrickAnimationData animData)
     {
         if (animData == null)
+        {
+            if (debugMode)
+                Debug.LogWarning("[TrickAnimator] StartAnimation called with null data");
             return;
+        }
+
+        if (boardVisuals == null)
+        {
+            Debug.LogError("[TrickAnimator] boardVisuals is null! Cannot animate.");
+            return;
+        }
 
         currentAnimation = animData;
         animationTime = 0f;
         isAnimating = true;
 
         // Store starting state
-        if (boardVisuals != null)
+        startPosition = boardVisuals.localPosition;
+        startRotation = boardVisuals.localRotation;
+
+        if (debugMode)
         {
-            startPosition = boardVisuals.localPosition;
-            startRotation = boardVisuals.localRotation;
+            Debug.Log($"<color=green>[TrickAnimator] STARTING ANIMATION: {animData.trickName}</color>\n" +
+                     $"  Duration: {animData.duration}s, Pop Height: {animData.popHeight}m\n" +
+                     $"  Rotation: X={animData.xRotation}, Y={animData.yRotation}, Z={animData.zRotation}\n" +
+                     $"  Start Pos: {startPosition}, Start Rot: {startRotation.eulerAngles}");
         }
 
         // Notify board controller
@@ -354,21 +388,18 @@ public class TrickAnimator : MonoBehaviour
             boardVisuals.localPosition = pos;
         }
 
-        // Apply rotation using curve
-        if (currentAnimation.HasRotation)
-        {
-            float rotProgress = rotationCurve.Evaluate(t);
+        // Always apply rotation (even if small)
+        float rotProgress = rotationCurve.Evaluate(t);
 
-            // Calculate current rotation
-            Quaternion animRotation = Quaternion.Euler(
-                currentAnimation.xRotation * rotProgress,
-                currentAnimation.yRotation * rotProgress,
-                currentAnimation.zRotation * rotProgress
-            );
+        // Calculate current rotation
+        Quaternion animRotation = Quaternion.Euler(
+            currentAnimation.xRotation * rotProgress,
+            currentAnimation.yRotation * rotProgress,
+            currentAnimation.zRotation * rotProgress
+        );
 
-            // Apply rotation relative to start rotation
-            boardVisuals.localRotation = startRotation * animRotation;
-        }
+        // Apply rotation relative to start rotation
+        boardVisuals.localRotation = startRotation * animRotation;
     }
 
     /// <summary>
@@ -384,31 +415,14 @@ public class TrickAnimator : MonoBehaviour
             // Return to ground level
             boardVisuals.localPosition = startPosition;
 
-            // For tricks with full rotations (360, 720), snap back to original rotation
-            // For partial rotations (180), keep the new orientation
-            if (currentAnimation != null)
-            {
-                float xRemainder = Mathf.Abs(currentAnimation.xRotation) % 360f;
-                float yRemainder = Mathf.Abs(currentAnimation.yRotation) % 360f;
-                float zRemainder = Mathf.Abs(currentAnimation.zRotation) % 360f;
+            // Always return to original rotation for clean landing
+            // (In a real game, 180 shuvits would change stance, but for now keep it simple)
+            boardVisuals.localRotation = startRotation;
+        }
 
-                // If rotation is a multiple of 360, return to original rotation
-                // Otherwise, apply the final rotation
-                if (xRemainder < 1f && yRemainder < 1f && zRemainder < 1f)
-                {
-                    boardVisuals.localRotation = startRotation;
-                }
-                else
-                {
-                    // Apply final rotation for partial rotations (like 180 shuvits)
-                    Quaternion finalRotation = Quaternion.Euler(
-                        currentAnimation.xRotation,
-                        currentAnimation.yRotation,
-                        currentAnimation.zRotation
-                    );
-                    boardVisuals.localRotation = startRotation * finalRotation;
-                }
-            }
+        if (debugMode)
+        {
+            Debug.Log($"<color=cyan>[TrickAnimator] Animation finished: {currentAnimation?.trickName}</color>");
         }
 
         // Notify board controller
@@ -418,11 +432,6 @@ public class TrickAnimator : MonoBehaviour
         }
 
         currentAnimation = null;
-
-        if (debugMode)
-        {
-            Debug.Log("[TrickAnimator] Animation finished");
-        }
     }
 
     /// <summary>
@@ -461,5 +470,34 @@ public class TrickAnimator : MonoBehaviour
 
         TrickAnimationData animData = GenerateAnimationFromTrick(trick, accuracy);
         StartAnimation(animData);
+    }
+
+    /// <summary>
+    /// Debug UI to show animation state
+    /// </summary>
+    private void OnGUI()
+    {
+        if (!debugMode)
+            return;
+
+        GUIStyle style = new GUIStyle(GUI.skin.box);
+        style.alignment = TextAnchor.UpperLeft;
+        style.fontSize = 12;
+        style.normal.textColor = Color.white;
+
+        string info = "[TrickAnimator]\n";
+        info += $"Board Visuals: {(boardVisuals != null ? "OK" : "MISSING!")}\n";
+        info += $"Trick System: {(trickInputSystem != null ? "OK" : "MISSING!")}\n";
+        info += $"Is Animating: {isAnimating}\n";
+
+        if (isAnimating && currentAnimation != null)
+        {
+            float progress = animationTime / currentAnimation.duration;
+            info += $"Current: {currentAnimation.trickName}\n";
+            info += $"Progress: {progress:P0}\n";
+            info += $"Rot: ({currentAnimation.xRotation:F0}, {currentAnimation.yRotation:F0}, {currentAnimation.zRotation:F0})";
+        }
+
+        GUI.Box(new Rect(Screen.width - 220, 10, 210, 130), info, style);
     }
 }
