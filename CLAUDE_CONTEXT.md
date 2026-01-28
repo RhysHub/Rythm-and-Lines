@@ -56,6 +56,13 @@ Available tricks: Ollie, Kickflip, Heelflip, FS/BS Pop-Shuvit, 360 Flip, Varial 
 ```
 Assets/
 ├── Scripts/
+│   ├── Board/
+│   │   ├── SkateboardBuilder.cs      # Builds 3D board from primitives
+│   │   ├── BoardVisualController.cs  # Steering/tilt from stick input
+│   │   ├── TrickAnimator.cs          # Procedural trick animations
+│   │   └── TrickAnimationData.cs     # Animation parameter struct
+│   ├── World/
+│   │   └── WorldMover.cs             # Endless runner movement
 │   ├── Editor/
 │   │   ├── TestSceneSetup.cs
 │   │   └── TrickDatabaseCreator.cs
@@ -68,7 +75,7 @@ Assets/
 │   ├── TrickInputSystem.cs
 │   ├── TrickTimingUI.cs
 │   ├── TrickDisplayUI.cs
-│   ├── BoardController.cs
+│   ├── BoardController.cs            # (Legacy dual-rigidbody system)
 │   ├── GroundDetector.cs
 │   ├── StickDirection.cs
 │   ├── StickType.cs
@@ -262,3 +269,147 @@ Debug text shows held sticks: `[1.25s] RS ↑ [LS:←] (Tap 0.15s)`
   - `TrickInputSystem.showCenterPopup` - Toggle center trick popup (disable when using TrickTimingUI)
   - `TrickInputSystem.showStickIndicators` - Toggle visual stick position indicators
   - `TrickInputSystem.stickIndicatorSize` - Size of stick indicator circles
+
+---
+
+## 3D Board Visual System (NEW)
+
+### Overview
+Endless runner style skateboard system where:
+- World moves backward, board stays at origin
+- Left stick steers (visual tilt + world direction change)
+- Tricks have procedural animations generated from TrickDefinition input sequences
+
+### New Scripts
+
+**Location:** `Assets/Scripts/Board/` and `Assets/Scripts/World/`
+
+| File | Purpose |
+|------|---------|
+| `SkateboardBuilder.cs` | Builds 3D skateboard from Unity primitives |
+| `BoardVisualController.cs` | Handles board tilt/steering from left stick |
+| `TrickAnimator.cs` | Procedural trick animations |
+| `TrickAnimationData.cs` | Animation parameter data structure |
+| `WorldMover.cs` | Endless runner world movement |
+
+### SkateboardBuilder.cs
+Generates a 3D skateboard from Unity primitives at runtime.
+
+**Hierarchy created:**
+```
+BoardVisuals (empty parent - animation target)
+├── Deck (cube)
+├── NoseKick (cube, angled)
+├── TailKick (cube, angled)
+├── FrontTruck
+│   ├── Hanger (cube)
+│   ├── LeftWheel (cylinder)
+│   └── RightWheel (cylinder)
+└── BackTruck
+    ├── Hanger (cube)
+    ├── LeftWheel (cylinder)
+    └── RightWheel (cylinder)
+```
+
+**Key Inspector Settings:**
+- Deck dimensions (length, width, thickness)
+- Truck/wheel dimensions
+- Colors (if no materials assigned)
+
+**Usage:** Add `SkateboardBuilder` component, call `BuildSkateboard()` or use Context Menu "Build Skateboard"
+
+### BoardVisualController.cs
+Controls board visual rotation based on left stick input while grounded.
+
+**Grounded behavior:**
+- Left stick X → Roll (side tilt) + Steering direction
+- Left stick Y → Pitch (nose up/down)
+- Sends steer input to WorldMover
+
+**Airborne behavior:**
+- Disabled during trick animations
+- Returns to neutral rotation
+
+**Key Inspector Settings:**
+- `maxTiltAngle` - Maximum side tilt (default 15°)
+- `maxPitchAngle` - Maximum nose pitch (default 10°)
+- `maxSteerAngle` - Steering angle for world direction (default 30°)
+- `tiltSpeed` - Rotation lerp speed
+
+### TrickAnimator.cs
+Generates procedural animations from TrickDefinition input sequences.
+
+**Animation Mapping:**
+
+| Input | Animation Effect |
+|-------|------------------|
+| Pop (any Up direction) | Y translation (pop height) |
+| LS UpRight / Right | Kickflip: +360° X rotation |
+| LS UpLeft / Left | Heelflip: -360° X rotation |
+| RS Drag Down→Left | BS Shuvit: +180° Y rotation |
+| RS Drag Down→Right | FS Shuvit: -180° Y rotation |
+| Combined | Compound rotation (e.g., 360 flip) |
+
+**Key Inspector Settings:**
+- `defaultDuration` - Animation duration (default 0.5s)
+- `defaultPopHeight` - Pop height (default 0.3m)
+- `popCurve` - AnimationCurve for height
+- `rotationCurve` - AnimationCurve for rotation progress
+- `flipRotation` - Degrees for kickflip (default 360°)
+- `shuvit180Rotation` - Degrees for shuvit (default 180°)
+
+**Events:** Subscribes to `TrickInputSystem.OnTrickMatched`
+
+### WorldMover.cs
+Moves the world backward for endless runner effect.
+
+**Key Inspector Settings:**
+- `baseSpeed` - Forward speed (world moves backward)
+- `speedMultiplier` - For speed boosts
+- `maxSteerAngle` - Max world turn angle
+- `steerSmoothing` - Steering response speed
+- `worldContainer` - Transform holding all world objects
+
+**Methods:**
+- `SetSteerInput(float)` - Set steering (-1 to 1)
+- `Pause()` / `Resume()` / `TogglePause()`
+- `ResetPosition()` - Reset world to origin
+
+### Scene Setup
+
+**Recommended hierarchy:**
+```
+Skateboard (origin, stationary)
+├── BoardVisuals (from SkateboardBuilder)
+├── WheelColliders
+│   ├── FrontWheelCollider (GroundDetector)
+│   └── BackWheelCollider (GroundDetector)
+└── Camera
+
+WorldContainer (moves backward)
+├── Ground (tagged "Ground")
+└── Obstacles...
+
+Systems (empty GameObject)
+├── InputReader
+├── TrickInputSystem
+├── SkateboardBuilder
+├── BoardVisualController
+├── TrickAnimator
+└── WorldMover
+```
+
+### 2026-01-28: 3D Board System Created
+**Files Created:**
+- `Assets/Scripts/Board/SkateboardBuilder.cs`
+- `Assets/Scripts/Board/BoardVisualController.cs`
+- `Assets/Scripts/Board/TrickAnimator.cs`
+- `Assets/Scripts/Board/TrickAnimationData.cs`
+- `Assets/Scripts/World/WorldMover.cs`
+
+**Features:**
+- Procedural 3D skateboard from primitives (deck, trucks, wheels)
+- Left stick steering with visual tilt
+- Endless runner world movement with steering curves
+- Procedural trick animations generated from TrickDefinition data
+- Animation curves for pop height and rotation timing

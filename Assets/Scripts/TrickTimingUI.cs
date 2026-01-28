@@ -37,6 +37,14 @@ public class TrickTimingUI : MonoBehaviour
     [Range(0.1f, 0.5f)]
     public float hitWindowPosition = 0.2f;
 
+    [Tooltip("Horizontal position of track")]
+    public TrackPosition trackPosition = TrackPosition.Right;
+
+    [Tooltip("Margin from edge when using Left or Right position")]
+    public float edgeMargin = 20f;
+
+    public enum TrackPosition { Left, Center, Right }
+
     [Header("References")]
     [Tooltip("Reference to the TrickInputSystem")]
     public TrickInputSystem trickInputSystem;
@@ -227,10 +235,24 @@ public class TrickTimingUI : MonoBehaviour
         lastResultTime = Time.time;
     }
 
+    private float GetTrackX()
+    {
+        switch (trackPosition)
+        {
+            case TrackPosition.Left:
+                return edgeMargin;
+            case TrackPosition.Right:
+                return Screen.width - trackWidth - edgeMargin;
+            case TrackPosition.Center:
+            default:
+                return (Screen.width - trackWidth) / 2f;
+        }
+    }
+
     private void OnGUI()
     {
-        // Center the track horizontally, full screen height
-        float trackX = (Screen.width - trackWidth) / 2f;
+        // Position track based on setting
+        float trackX = GetTrackX();
         float trackTop = 0f;
         float trackHeight = Screen.height;
         float trackBottom = trackHeight;
@@ -388,4 +410,61 @@ public class TrickTimingUI : MonoBehaviour
         earlyCount = 0;
         activeTricks.Clear();
     }
+
+#if UNITY_EDITOR
+    /// <summary>
+    /// Draw gizmos in Scene view to show track position
+    /// </summary>
+    private void OnDrawGizmos()
+    {
+        // Get camera for screen-to-world conversion
+        Camera cam = Camera.main;
+        if (cam == null)
+            cam = FindObjectOfType<Camera>();
+        if (cam == null)
+            return;
+
+        // Calculate screen positions
+        float screenWidth = cam.pixelWidth;
+        float screenHeight = cam.pixelHeight;
+
+        float trackX;
+        switch (trackPosition)
+        {
+            case TrackPosition.Left:
+                trackX = edgeMargin;
+                break;
+            case TrackPosition.Right:
+                trackX = screenWidth - trackWidth - edgeMargin;
+                break;
+            default:
+                trackX = (screenWidth - trackWidth) / 2f;
+                break;
+        }
+
+        float hitWindowY = screenHeight * (1f - hitWindowPosition);
+
+        // Convert screen corners to world positions
+        Vector3 topLeft = cam.ScreenToWorldPoint(new Vector3(trackX, screenHeight, 10f));
+        Vector3 topRight = cam.ScreenToWorldPoint(new Vector3(trackX + trackWidth, screenHeight, 10f));
+        Vector3 bottomLeft = cam.ScreenToWorldPoint(new Vector3(trackX, 0, 10f));
+        Vector3 bottomRight = cam.ScreenToWorldPoint(new Vector3(trackX + trackWidth, 0, 10f));
+        Vector3 hitLineLeft = cam.ScreenToWorldPoint(new Vector3(trackX, hitWindowY, 10f));
+        Vector3 hitLineRight = cam.ScreenToWorldPoint(new Vector3(trackX + trackWidth, hitWindowY, 10f));
+
+        // Draw track outline
+        Gizmos.color = new Color(0.5f, 0.5f, 1f, 0.5f);
+        Gizmos.DrawLine(topLeft, topRight);
+        Gizmos.DrawLine(topRight, bottomRight);
+        Gizmos.DrawLine(bottomRight, bottomLeft);
+        Gizmos.DrawLine(bottomLeft, topLeft);
+
+        // Draw hit line
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawLine(hitLineLeft, hitLineRight);
+
+        // Draw label
+        UnityEditor.Handles.Label(topLeft, "Trick Track");
+    }
+#endif
 }

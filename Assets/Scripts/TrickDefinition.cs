@@ -54,6 +54,10 @@ public class TrickDefinition : ScriptableObject
     [Tooltip("Maximum time to complete entire sequence (seconds)")]
     public float maxSequenceTime = 0.4f;
 
+    [Header("Animation")]
+    [Tooltip("Board pops into the air when performing this trick (like an ollie)")]
+    public bool pops = true;
+
     [Header("Execution Requirements")]
     [Tooltip("Can only be performed in the air")]
     public bool requiresAirborne = false;

@@ -29,7 +29,7 @@ MonoBehaviour:
     requiredLeftStickHeld: 0
     requiredRightStickHeld: 0
   - stickType: 1
-    direction: 2
+    direction: 8
     inputType: 2
     dragEndDirection: 0
     minHoldDuration: 0.1
