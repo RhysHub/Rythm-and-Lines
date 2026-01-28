@@ -1,0 +1,106 @@
+Ollie Flip Tricks
+Ollie – RS Up
+Kickflip – RS Up + Right
+Heelflip – RS Up + Left
+FS Pop-Shuvit – RS Left
+BS Pop-Shuvit – RS Right
+Varial Kickflip – RS flick Down/Left then Up/Right
+Varial Heelflip – RS flick Down/Right then Up/Left
+360 Flip – RS Left → Down → Up/Right
+Laserflip – RS Right → Down → Up/Left
+Hardflip – RS Down → Down/Right → Up
+Inward Heelflip – RS Down → Down/Left → Up
+FS 360 Pop-Shuvit – RS Down/Right then drag Left
+BS 360 Pop-Shuvit – RS Down/Left then drag Right
+360 Hardflip – RS Right → Down → Up
+360 Inward Heelflip – RS Left → Down → Up
+Nollie Flip Tricks
+The same principles apply, but popped from the nose instead of the tail.
+
+Nollie – RS Up then Down
+Nollie Kickflip – RS Up + Down/Right
+Nollie Heelflip – RS Up + Down/Left
+Nollie FS Pop-Shuvit – RS Up + drag Right
+Nollie BS Pop-Shuvit – RS Up + drag Left
+Nollie Varial Kickflip – RS Up/Left + Down/Right
+Nollie Varial Heelflip – RS Up/Right + Down/Left
+Nollie 360 Flip – RS Up/Left → Up → Down/Right
+Nollie Laserflip – RS Up/Right → Up → Down/Left
+Nollie Hardflip – RS Up → slight Right → Down/Right
+Nollie Inward Heelflip – RS Up → slight Left → Down/Left
+Nollie FS 360 Pop-Shuvit – RS Up/Left → drag Up/Right
+Nollie BS 360 Pop-Shuvit – RS Up/Right → drag Up/Left
+Nollie 360 Hardflip – RS Right → Up → Down/Right
+Nollie 360 Inward Heelflip – RS Left → Up → Down/Left
+Flip Trick Modifiers
+Late Flip – RS Down + Up/Right mid-air
+Held Flip (Doubleflip) – RS Down + Up/Right, hold in-air
+Boned Ollie – Hold RS Up
+Front Foot One-Foot Ollie – Press A/X while airborne
+Back Foot One-Foot Ollie – Press X/Square while airborne
+
+Grind Tricks
+To grind, approach a rail or ledge at an angle, pop an Ollie, and input the right stick direction for the trick. Stance decides whether it’s Frontside or Backside.
+
+50-50 Grind (FS/BS) – RS Down + Up
+5-0 Grind (FS/BS) – Hold RS Down in-air
+Nose Grind (FS/BS) – Hold RS Up in-air
+Crooked (FS/BS) – RS Up/Left in-air
+Overcrook (FS/BS) – RS Up/Right in-air
+Salad (FS/BS) – RS Down/Right in-air
+Smith (FS/BS) – RS Right + Up in-air
+Feeble (FS) – RS Left + Up in-air
+Willy (FS/BS) – RS Left + Down in-air
+Over Willy (FS/BS) – RS Right + Down in-air
+Boardslide (FS/BS) – RS Left in-air
+Lipslide (FS/BS) – RS Right in-air
+Noseslide (FS/BS) – RS Up + Left in-air
+Tailslide (FS/BS) – RS Down + Left in-air
+Bluntslide (FS/BS) – RS Down + Right in-air
+Nose Blunt (FS/BS) – RS Up + Left in-air
+Exit Grind/Slide – LS Left or Right
+Grab Tricks
+Grabs are the flashiest way to style your air time. They’re split into Basic, Modified, One-Foot, No-Foot, and Ground-based grabs.
+
+Basic Grabs
+BS Grab – Hold RT/R2
+FS Grab – Hold LT/L2
+Double Grab – Hold LT/L2 + RT/R2
+Tail Grab – RS Up + LT/L2
+Nose Grab – RS Down + RT/R2
+Stale – RS Right + LT/L2
+Weddle – RS Right + RT/R2
+Crail – RS Down + LT/L2
+Seatbelt – RS Up + RT/R2
+Rocket Air – RS Down + RT/R2 + LT/L2
+Modified Grabs
+Nosebone – LT/L2 + RS Up
+Tailbone – LT/L2 + RS Down
+Tuck Knee – LT/L2 + RS Right
+Stiffy – LT/L2 + RS Left
+BS Tweak – RT/R2 + RS Down
+Melon – RT/R2 + RS Up
+Crossbone – RT/R2 + RS Left
+Method – RT/R2 + RS Right
+…plus advanced variations like Japan Air, Shifty Seatbelt, and Weddle Nosebone.
+One-Foot Grabs
+Frigid Air – LT/L2 + A/X
+FS One-Foot – LT/L2 + X/Square
+Judo Air – RT/R2 + X/Square
+One-Foot Air – RT/R2 + A/X
+Benihana – RS Up → RT/R2 + X/Square
+No-Foot Grabs
+Airwalk – RS Down → RT/R2 + B/Circle
+Tailwalk – RS Up → RT/R2 + B/Circle
+Christ Air – RT/R2 + B/Circle
+Superdude – LT/L2 + RT/R2 + B/Circle
+Ground-Based Grabs
+Frontside Ground Grab – LT/L2 while rolling
+Backside Ground Grab – RT/R2 while rolling
+Double Ground Grab – LT/L2 + RT/R2 while rolling
+Coffin – LT/L2 + RT/R2 + A/X + X/Square
+Handplants & Footplants
+Handplants (FS/BS) – LB/L1 or RB/R1 at a lip
+Bean Plant – RT/R2 + A/X
+Fastplant (FS/BS) – RT/R2 or LT/L2 + X/Square
+Boneless – LT/L2 + A/X

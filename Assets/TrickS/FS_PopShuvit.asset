@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2976e0a229a63cb4eb656bec1bedc790, type: 3}
+  m_Name: FS_PopShuvit
+  m_EditorClassIdentifier: 
+  trickName: FS Pop-Shuvit
+  category: 1
+  requiredStance: 0
+  difficulty: 2
+  inputSequence:
+  - stickType: 0
+    direction: 5
+    inputType: 3
+    dragEndDirection: 3
+    minHoldDuration: 0.1
+    maxStepTime: 0.15
+    requiredTrigger: 0
+    requiredFaceButton: 0
+    requiredShoulder: 0
+    requiredLeftStickHeld: 0
+    requiredRightStickHeld: 0
+  maxSequenceTime: 0.5
+  requiresAirborne: 0
+  requiresGrounded: 0
+  requiresGrindSurface: 0
