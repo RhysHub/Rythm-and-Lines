@@ -357,12 +357,12 @@ public class TrickAnimator : MonoBehaviour
                 // (Pop is already handled by hasPop flag)
                 break;
 
-            case StickDirection.UpRight:
+            case StickDirection.UpLeft:
                 // Kickflip from back foot - Z-axis rotation (barrel roll)
                 anim.zRotation += flipRotation;
                 break;
 
-            case StickDirection.UpLeft:
+            case StickDirection.UpRight:
                 // Heelflip from back foot - Z-axis rotation (barrel roll opposite)
                 anim.zRotation -= flipRotation;
                 break;
@@ -401,15 +401,15 @@ public class TrickAnimator : MonoBehaviour
                 // Nollie pop
                 break;
 
-            case StickDirection.UpRight:
-            case StickDirection.Right:
+            case StickDirection.UpLeft:
+            case StickDirection.Left:
                 // Kickflip - board flips toward heel side
                 // Z-axis rotation (barrel roll along length of board)
                 anim.zRotation += flipRotation;
                 break;
 
-            case StickDirection.UpLeft:
-            case StickDirection.Left:
+            case StickDirection.UpRight:
+            case StickDirection.Right:
                 // Heelflip - board flips toward toe side
                 // Z-axis rotation opposite direction
                 anim.zRotation -= flipRotation;
@@ -419,12 +419,12 @@ public class TrickAnimator : MonoBehaviour
                 // Setup position
                 break;
 
-            case StickDirection.DownRight:
+            case StickDirection.DownLeft:
                 // Varial kickflip component - kickflip direction
                 anim.zRotation += flipRotation;
                 break;
 
-            case StickDirection.DownLeft:
+            case StickDirection.DownRight:
                 // Varial heelflip component - heelflip direction
                 anim.zRotation -= flipRotation;
                 break;
