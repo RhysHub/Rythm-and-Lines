@@ -27,11 +27,11 @@ public class TrickAnimator : MonoBehaviour
     [Tooltip("Always pop even for grounded tricks")]
     public bool alwaysPop = true;
 
-    [Tooltip("Pop height curve (0-1 normalized time)")]
-    public AnimationCurve popCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 0f);
+    [Tooltip("Pop height curve (0-1 normalized time, should peak in middle)")]
+    public AnimationCurve popCurve;
 
     [Tooltip("Rotation curve (0-1 normalized time)")]
-    public AnimationCurve rotationCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+    public AnimationCurve rotationCurve;
 
     [Header("Rotation Amounts (degrees)")]
     [Tooltip("Degrees for a kickflip/heelflip")]
@@ -68,22 +68,38 @@ public class TrickAnimator : MonoBehaviour
 
     private void Awake()
     {
-        // Setup default curves if not configured
-        if (popCurve.keys.Length == 0)
+        // Setup default curves if not configured or invalid
+        if (popCurve == null || popCurve.keys.Length < 2)
         {
-            // Parabolic pop curve - peak at 40% of animation
-            popCurve = new AnimationCurve(
-                new Keyframe(0f, 0f, 0f, 4f),
-                new Keyframe(0.4f, 1f, 0f, 0f),
-                new Keyframe(1f, 0f, -4f, 0f)
-            );
+            SetupDefaultPopCurve();
+        }
+        else
+        {
+            // Check if curve is flat (broken default)
+            float midValue = popCurve.Evaluate(0.5f);
+            if (midValue < 0.1f)
+            {
+                Debug.LogWarning("[TrickAnimator] Pop curve appears flat, resetting to default");
+                SetupDefaultPopCurve();
+            }
         }
 
-        if (rotationCurve.keys.Length == 0)
+        if (rotationCurve == null || rotationCurve.keys.Length < 2)
         {
-            // Linear rotation
             rotationCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
         }
+    }
+
+    private void SetupDefaultPopCurve()
+    {
+        // Parabolic pop curve - starts at 0, peaks at 1 around 40%, ends at 0
+        popCurve = new AnimationCurve();
+        popCurve.AddKey(new Keyframe(0f, 0f, 0f, 3f));      // Start at ground
+        popCurve.AddKey(new Keyframe(0.4f, 1f, 0f, 0f));    // Peak in air
+        popCurve.AddKey(new Keyframe(1f, 0f, -3f, 0f));     // Land back down
+
+        if (debugMode)
+            Debug.Log("[TrickAnimator] Set up default pop curve");
     }
 
     private void OnEnable()
@@ -379,13 +395,14 @@ public class TrickAnimator : MonoBehaviour
         if (boardVisuals == null || currentAnimation == null)
             return;
 
+        Vector3 newPos = startPosition;
+        Quaternion newRot = startRotation;
+
         // Apply pop height using curve
         if (currentAnimation.hasPop)
         {
             float heightMultiplier = popCurve.Evaluate(t);
-            Vector3 pos = startPosition;
-            pos.y += currentAnimation.popHeight * heightMultiplier;
-            boardVisuals.localPosition = pos;
+            newPos.y += currentAnimation.popHeight * heightMultiplier;
         }
 
         // Always apply rotation (even if small)
@@ -398,8 +415,11 @@ public class TrickAnimator : MonoBehaviour
             currentAnimation.zRotation * rotProgress
         );
 
-        // Apply rotation relative to start rotation
-        boardVisuals.localRotation = startRotation * animRotation;
+        newRot = startRotation * animRotation;
+
+        // Apply to board
+        boardVisuals.localPosition = newPos;
+        boardVisuals.localRotation = newRot;
     }
 
     /// <summary>
