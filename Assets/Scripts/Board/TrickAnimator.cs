@@ -34,16 +34,16 @@ public class TrickAnimator : MonoBehaviour
     public AnimationCurve rotationCurve;
 
     [Header("Rotation Amounts (degrees)")]
-    [Tooltip("Degrees for a kickflip/heelflip")]
+    [Tooltip("Degrees for a kickflip/heelflip (Z-axis, around long axis of board)")]
     public float flipRotation = 360f;
 
-    [Tooltip("Degrees for a 180 shuvit")]
+    [Tooltip("Degrees for a 180 shuvit (Y-axis, horizontal spin)")]
     public float shuvit180Rotation = 180f;
 
-    [Tooltip("Degrees for a 360 shuvit (tre flip)")]
+    [Tooltip("Degrees for a 360 shuvit (Y-axis, tre flip)")]
     public float shuvit360Rotation = 360f;
 
-    [Tooltip("Small rotation for tricks with no explicit rotation (like Ollie)")]
+    [Tooltip("Small tilt for tricks with no explicit rotation (like Ollie)")]
     public float minVisibleRotation = 15f;
 
     [Header("Debug")]
@@ -264,10 +264,10 @@ public class TrickAnimator : MonoBehaviour
             AnalyzeInputStep(step, ref anim);
         }
 
-        // If no rotation was added, add a small Z rotation for visual feedback (board tilts)
+        // If no rotation was added, add a small X rotation for visual feedback (nose lifts)
         if (!anim.HasRotation)
         {
-            anim.zRotation = minVisibleRotation;
+            anim.xRotation = minVisibleRotation;
         }
 
         if (debugMode)
@@ -358,14 +358,13 @@ public class TrickAnimator : MonoBehaviour
                 break;
 
             case StickDirection.UpRight:
-                // Could be kickflip initiation from back foot
-                // (Usually kickflips use left stick in this system)
-                anim.xRotation += flipRotation;
+                // Kickflip from back foot - Z-axis rotation (barrel roll)
+                anim.zRotation += flipRotation;
                 break;
 
             case StickDirection.UpLeft:
-                // Could be heelflip initiation from back foot
-                anim.xRotation -= flipRotation;
+                // Heelflip from back foot - Z-axis rotation (barrel roll opposite)
+                anim.zRotation -= flipRotation;
                 break;
 
             case StickDirection.Down:
@@ -373,7 +372,7 @@ public class TrickAnimator : MonoBehaviour
                 break;
 
             case StickDirection.Left:
-                // BS shuvit direction (if not a drag)
+                // BS shuvit direction (if not a drag) - Y-axis rotation
                 if (step.inputType != InputType.Drag)
                 {
                     anim.yRotation += shuvit180Rotation;
@@ -381,7 +380,7 @@ public class TrickAnimator : MonoBehaviour
                 break;
 
             case StickDirection.Right:
-                // FS shuvit direction (if not a drag)
+                // FS shuvit direction (if not a drag) - Y-axis rotation
                 if (step.inputType != InputType.Drag)
                 {
                     anim.yRotation -= shuvit180Rotation;
@@ -405,15 +404,15 @@ public class TrickAnimator : MonoBehaviour
             case StickDirection.UpRight:
             case StickDirection.Right:
                 // Kickflip - board flips toward heel side
-                // Positive X rotation (rolls right when viewed from behind)
-                anim.xRotation += flipRotation;
+                // Z-axis rotation (barrel roll along length of board)
+                anim.zRotation += flipRotation;
                 break;
 
             case StickDirection.UpLeft:
             case StickDirection.Left:
                 // Heelflip - board flips toward toe side
-                // Negative X rotation (rolls left when viewed from behind)
-                anim.xRotation -= flipRotation;
+                // Z-axis rotation opposite direction
+                anim.zRotation -= flipRotation;
                 break;
 
             case StickDirection.Down:
@@ -421,13 +420,13 @@ public class TrickAnimator : MonoBehaviour
                 break;
 
             case StickDirection.DownRight:
-                // Varial kickflip component?
-                anim.xRotation += flipRotation;
+                // Varial kickflip component - kickflip direction
+                anim.zRotation += flipRotation;
                 break;
 
             case StickDirection.DownLeft:
-                // Varial heelflip component?
-                anim.xRotation -= flipRotation;
+                // Varial heelflip component - heelflip direction
+                anim.zRotation -= flipRotation;
                 break;
         }
     }
