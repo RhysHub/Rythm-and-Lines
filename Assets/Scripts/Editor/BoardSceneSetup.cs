@@ -51,22 +51,27 @@ public class BoardSceneSetup : EditorWindow
         wheelColliders.transform.SetParent(skateboard.transform);
         wheelColliders.transform.localPosition = Vector3.zero;
 
-        // Front wheel collider
+        // Add Rigidbody for trigger detection (kinematic so it doesn't fall)
+        Rigidbody wheelRb = wheelColliders.AddComponent<Rigidbody>();
+        wheelRb.isKinematic = true;
+        wheelRb.useGravity = false;
+
+        // Front wheel collider - positioned to intersect ground at y=0
         GameObject frontWheelCollider = new GameObject("FrontWheelCollider");
         frontWheelCollider.transform.SetParent(wheelColliders.transform);
-        frontWheelCollider.transform.localPosition = new Vector3(0, -0.05f, 0.28f);
+        frontWheelCollider.transform.localPosition = new Vector3(0, -0.1f, 0.28f);
         BoxCollider frontBox = frontWheelCollider.AddComponent<BoxCollider>();
         frontBox.isTrigger = true;
-        frontBox.size = new Vector3(0.2f, 0.02f, 0.05f);
+        frontBox.size = new Vector3(0.3f, 0.15f, 0.1f); // Taller to ensure ground intersection
         GroundDetector frontDetector = frontWheelCollider.AddComponent<GroundDetector>();
 
-        // Back wheel collider
+        // Back wheel collider - positioned to intersect ground at y=0
         GameObject backWheelCollider = new GameObject("BackWheelCollider");
         backWheelCollider.transform.SetParent(wheelColliders.transform);
-        backWheelCollider.transform.localPosition = new Vector3(0, -0.05f, -0.28f);
+        backWheelCollider.transform.localPosition = new Vector3(0, -0.1f, -0.28f);
         BoxCollider backBox = backWheelCollider.AddComponent<BoxCollider>();
         backBox.isTrigger = true;
-        backBox.size = new Vector3(0.2f, 0.02f, 0.05f);
+        backBox.size = new Vector3(0.3f, 0.15f, 0.1f); // Taller to ensure ground intersection
         GroundDetector backDetector = backWheelCollider.AddComponent<GroundDetector>();
 
         Debug.Log("Created wheel colliders with GroundDetector");
@@ -130,6 +135,7 @@ public class BoardSceneSetup : EditorWindow
         boardController.backWheels = backDetector;
         boardController.boardVisuals = boardVisuals.transform;
         boardController.worldMover = worldMover;
+        boardController.debugMode = true;
 
         Debug.Log("Added BoardVisualController");
 
@@ -182,6 +188,9 @@ public class BoardSceneSetup : EditorWindow
         UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
             UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
 
+        // Step 11: Create Canvas UI
+        CreateCanvasUI(trickInputSystem, inputReader);
+
         Debug.Log("<color=green>✓ 3D Board Scene setup complete!</color>");
         Debug.Log("Controls:");
         Debug.Log("  - WASD / Left Stick: Steer and tilt board");
@@ -190,6 +199,43 @@ public class BoardSceneSetup : EditorWindow
 
         // Select the skateboard
         Selection.activeGameObject = skateboard;
+    }
+
+    private static void CreateCanvasUI(TrickInputSystem trickInputSystem, InputReader inputReader)
+    {
+        Debug.Log("Creating Canvas UI...");
+
+        // Create main UI Canvas
+        GameObject canvasObj = new GameObject("GameCanvas");
+        Canvas canvas = canvasObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 100;
+
+        var scaler = canvasObj.AddComponent<UnityEngine.UI.CanvasScaler>();
+        scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+        canvasObj.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+
+        // Create Stick Indicator UI
+        GameObject stickUIObj = new GameObject("StickIndicatorUI");
+        stickUIObj.transform.SetParent(canvasObj.transform);
+        StickIndicatorUI stickUI = stickUIObj.AddComponent<StickIndicatorUI>();
+        stickUI.inputReader = inputReader;
+        stickUI.AutoSetupUI();
+
+        // Create Trick Track UI
+        GameObject trackUIObj = new GameObject("TrickTrackUI");
+        trackUIObj.transform.SetParent(canvasObj.transform);
+        TrickTrackUI trackUI = trackUIObj.AddComponent<TrickTrackUI>();
+        trackUI.trickInputSystem = trickInputSystem;
+        trackUI.canvas = canvas;
+        trackUI.SetupUI();
+
+        // Disable old OnGUI in TrickInputSystem
+        trickInputSystem.showDebugUI = false;
+        trickInputSystem.showStickIndicators = false;
+
+        Debug.Log("Canvas UI created");
     }
 
     [MenuItem("Tools/Skate/Clear 3D Board Scene")]
