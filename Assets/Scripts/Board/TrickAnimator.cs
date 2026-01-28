@@ -153,8 +153,8 @@ public class TrickAnimator : MonoBehaviour
         anim.duration = defaultDuration;
         anim.popHeight = defaultPopHeight;
 
-        // Always pop for visual feedback (unless explicitly disabled)
-        anim.hasPop = alwaysPop || !trick.requiresGrounded;
+        // Use the trick's pops setting, or override with alwaysPop if enabled
+        anim.hasPop = trick.pops || alwaysPop;
 
         // Analyze each input step to determine rotation
         foreach (InputStep step in trick.inputSequence)
@@ -171,7 +171,7 @@ public class TrickAnimator : MonoBehaviour
         if (debugMode)
         {
             Debug.Log($"[TrickAnimator] Generated animation for {trick.trickName}: " +
-                     $"Pop={anim.hasPop}, Height={anim.popHeight}, " +
+                     $"Pop={anim.hasPop} (trick.pops={trick.pops}), Height={anim.popHeight}, " +
                      $"Rot=({anim.xRotation}, {anim.yRotation}, {anim.zRotation})");
         }
 
