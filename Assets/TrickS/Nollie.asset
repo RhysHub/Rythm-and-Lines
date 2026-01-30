@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2976e0a229a63cb4eb656bec1bedc790, type: 3}
-  m_Name: VarialKickflip
+  m_Name: Nollie
   m_EditorClassIdentifier:
-  trickName: Varial Kickflip
+  trickName: Nollie
   category: 0
   requiredStance: 0
-  difficulty: 3
+  difficulty: 2
   inputSequence:
-  - stickType: 0
-    direction: 6
+  - stickType: 1
+    direction: 1
     inputType: 2
     dragEndDirection: 0
     minHoldDuration: 0.1
@@ -28,8 +28,8 @@ MonoBehaviour:
     requiredShoulder: 0
     requiredLeftStickHeld: 0
     requiredRightStickHeld: 0
-  - stickType: 1
-    direction: 8
+  - stickType: 0
+    direction: 5
     inputType: 2
     dragEndDirection: 0
     minHoldDuration: 0.1

@@ -258,10 +258,19 @@ public class TrickAnimator : MonoBehaviour
         // Use the trick's pops setting, or override with alwaysPop if enabled
         anim.hasPop = trick.pops || alwaysPop;
 
+        // Track if we've seen a nollie pop (LS Up) - this changes how RS diagonals are interpreted
+        bool hasNolliePop = false;
+
         // Analyze each input step to determine rotation
         foreach (InputStep step in trick.inputSequence)
         {
-            AnalyzeInputStep(step, ref anim);
+            // Check for nollie pop (LS Up)
+            if (step.stickType == StickType.LeftStick && step.direction == StickDirection.Up)
+            {
+                hasNolliePop = true;
+            }
+
+            AnalyzeInputStep(step, ref anim, hasNolliePop);
         }
 
         // If no rotation was added, add a small X rotation for visual feedback (nose lifts)
@@ -283,7 +292,7 @@ public class TrickAnimator : MonoBehaviour
     /// <summary>
     /// Analyzes an input step and adds appropriate rotation to the animation
     /// </summary>
-    private void AnalyzeInputStep(InputStep step, ref TrickAnimationData anim)
+    private void AnalyzeInputStep(InputStep step, ref TrickAnimationData anim, bool hasNolliePop = false)
     {
         // Handle drags (shuvits)
         if (step.inputType == InputType.Drag)
@@ -295,7 +304,7 @@ public class TrickAnimator : MonoBehaviour
         // Handle directional inputs based on stick type
         if (step.stickType == StickType.RightStick)
         {
-            AnalyzeRightStickInput(step, ref anim);
+            AnalyzeRightStickInput(step, ref anim, hasNolliePop);
         }
         else // LeftStick
         {
@@ -308,38 +317,48 @@ public class TrickAnimator : MonoBehaviour
     /// </summary>
     private void AnalyzeDragInput(InputStep step, ref TrickAnimationData anim)
     {
-        // Drag inputs typically indicate shuvits (Y-axis rotation)
+        // If dragTurnType is specified, use it directly for rotation
+        if (step.dragTurnType != DragTurnType.None)
+        {
+            // Get shuvit rotation from turn type (positive = BS/CCW, negative = FS/CW)
+            anim.yRotation += step.dragTurnType.GetShuvitRotation();
+            return;
+        }
+
+        // Legacy: fallback to dragEndDirection-based logic
         // Down->Left = BS (backside) shuvit = positive Y rotation
         // Down->Right = FS (frontside) shuvit = negative Y rotation
-
         if (step.direction == StickDirection.Down)
         {
-            if (step.dragEndDirection == StickDirection.Left ||
+            // BS 360 Shuvit - full arc through left to up
+            if (step.dragEndDirection == StickDirection.UpLeft ||
+                step.dragEndDirection == StickDirection.Up && anim.yRotation > 0)
+            {
+                anim.yRotation = shuvit360Rotation;
+            }
+            // FS 360 Shuvit - full arc through right to up
+            else if (step.dragEndDirection == StickDirection.UpRight ||
+                     step.dragEndDirection == StickDirection.Up && anim.yRotation < 0)
+            {
+                anim.yRotation = -shuvit360Rotation;
+            }
+            // BS Pop Shuvit (180)
+            else if (step.dragEndDirection == StickDirection.Left ||
                 step.dragEndDirection == StickDirection.DownLeft)
             {
-                // BS Shuvit - check if it's part of a tre flip (360)
                 if (anim.yRotation >= shuvit180Rotation)
-                {
-                    // Already has shuvit rotation, this might be a tre flip
                     anim.yRotation = shuvit360Rotation;
-                }
                 else
-                {
                     anim.yRotation += shuvit180Rotation;
-                }
             }
+            // FS Pop Shuvit (180)
             else if (step.dragEndDirection == StickDirection.Right ||
                      step.dragEndDirection == StickDirection.DownRight)
             {
-                // FS Shuvit
                 if (anim.yRotation <= -shuvit180Rotation)
-                {
                     anim.yRotation = -shuvit360Rotation;
-                }
                 else
-                {
                     anim.yRotation -= shuvit180Rotation;
-                }
             }
         }
     }
@@ -347,8 +366,9 @@ public class TrickAnimator : MonoBehaviour
     /// <summary>
     /// Analyzes right stick (back foot) input
     /// Right stick typically handles pop and some flip/shuvit initiation
+    /// For nollie tricks (hasNolliePop=true), DownLeft/DownRight produce flip instead of shuvit
     /// </summary>
-    private void AnalyzeRightStickInput(InputStep step, ref TrickAnimationData anim)
+    private void AnalyzeRightStickInput(InputStep step, ref TrickAnimationData anim, bool hasNolliePop = false)
     {
         switch (step.direction)
         {
@@ -383,6 +403,32 @@ public class TrickAnimator : MonoBehaviour
                 // FS shuvit direction (if not a drag) - Y-axis rotation
                 if (step.inputType != InputType.Drag)
                 {
+                    anim.yRotation -= shuvit180Rotation;
+                }
+                break;
+
+            case StickDirection.DownLeft:
+                if (hasNolliePop)
+                {
+                    // Nollie kickflip - RS DownLeft = kickflip (Z-axis rotation)
+                    anim.zRotation += flipRotation;
+                }
+                else
+                {
+                    // Varial kickflip setup - BS shuvit component (180 rotation)
+                    anim.yRotation += shuvit180Rotation;
+                }
+                break;
+
+            case StickDirection.DownRight:
+                if (hasNolliePop)
+                {
+                    // Nollie heelflip - RS DownRight = heelflip (Z-axis rotation)
+                    anim.zRotation -= flipRotation;
+                }
+                else
+                {
+                    // Varial heelflip setup - FS shuvit component (180 rotation)
                     anim.yRotation -= shuvit180Rotation;
                 }
                 break;
