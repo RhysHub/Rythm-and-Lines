@@ -49,6 +49,9 @@ public class TrickTimingUI : MonoBehaviour
     [Tooltip("Reference to the TrickInputSystem")]
     public TrickInputSystem trickInputSystem;
 
+    [Tooltip("Reference to TrickIconHelper for drawing input icons")]
+    public TrickIconHelper iconHelper;
+
     [Header("Debug")]
     public bool showDebugInfo = true;
 
@@ -83,6 +86,11 @@ public class TrickTimingUI : MonoBehaviour
         if (trickInputSystem == null)
         {
             trickInputSystem = FindObjectOfType<TrickInputSystem>();
+        }
+
+        if (iconHelper == null)
+        {
+            iconHelper = TrickIconHelper.Instance;
         }
 
         if (trickInputSystem != null)
@@ -249,6 +257,99 @@ public class TrickTimingUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Draws input sequence icons for a trick within the given box rect
+    /// </summary>
+    private void DrawInputSequenceIcons(Rect boxRect, TrickDefinition trick, Color color)
+    {
+        if (iconHelper == null || trick.inputSequence == null || trick.inputSequence.Count == 0)
+            return;
+
+        int stepCount = trick.inputSequence.Count;
+        float iconSize = 28f;
+        float spacing = 8f;
+        float arrowWidth = 12f;
+
+        // Calculate total width needed
+        float totalWidth = (stepCount * iconSize) + ((stepCount - 1) * (spacing + arrowWidth + spacing));
+
+        // Center the icons horizontally in the box
+        float startX = boxRect.x + (boxRect.width - totalWidth) / 2f;
+        float iconY = boxRect.y + 35f; // Below the trick name
+
+        for (int i = 0; i < stepCount; i++)
+        {
+            InputStep step = trick.inputSequence[i];
+
+            // Draw stick indicator (LS/RS) above the icon
+            GUIStyle stickStyle = new GUIStyle(GUI.skin.label);
+            stickStyle.fontSize = 9;
+            stickStyle.alignment = TextAnchor.MiddleCenter;
+            stickStyle.normal.textColor = step.stickType == StickType.LeftStick ?
+                new Color(0.5f, 0.8f, 1f) : new Color(1f, 0.8f, 0.5f);
+
+            Rect stickLabelRect = new Rect(startX, iconY - 12f, iconSize, 12f);
+            GUI.Label(stickLabelRect, step.stickType == StickType.LeftStick ? "LS" : "RS", stickStyle);
+
+            // Draw the icon
+            Rect iconRect = new Rect(startX, iconY, iconSize, iconSize);
+
+            // For drag inputs with turn type, draw turn icon
+            if (step.inputType == InputType.Drag && step.dragTurnType != DragTurnType.None)
+            {
+                Texture2D turnTex = iconHelper.GetTurnTexture(step.dragTurnType);
+                if (turnTex != null)
+                {
+                    bool flip = TrickIconHelper.ShouldFlipHorizontal(step.dragTurnType);
+                    TrickIconHelper.DrawRotatedTexture(iconRect, turnTex, 0f, color, flip);
+                }
+            }
+            else if (step.direction != StickDirection.None)
+            {
+                // Draw direction arrow
+                if (iconHelper.arrowUp != null)
+                {
+                    float rotation = TrickIconHelper.GetDirectionRotation(step.direction);
+                    TrickIconHelper.DrawRotatedTexture(iconRect, iconHelper.arrowUp, rotation, color);
+                }
+            }
+
+            // Draw input type indicator below icon
+            GUIStyle typeStyle = new GUIStyle(GUI.skin.label);
+            typeStyle.fontSize = 8;
+            typeStyle.alignment = TextAnchor.MiddleCenter;
+            typeStyle.normal.textColor = new Color(color.r, color.g, color.b, 0.7f);
+
+            Rect typeLabelRect = new Rect(startX, iconY + iconSize, iconSize, 10f);
+            string typeLabel = step.inputType == InputType.Drag ? "drag" :
+                              step.inputType == InputType.Flick ? "flick" :
+                              step.inputType == InputType.Hold ? "hold" : "";
+            if (!string.IsNullOrEmpty(typeLabel))
+            {
+                GUI.Label(typeLabelRect, typeLabel, typeStyle);
+            }
+
+            startX += iconSize;
+
+            // Draw arrow between inputs
+            if (i < stepCount - 1)
+            {
+                startX += spacing;
+
+                // Draw ">" arrow between steps
+                GUIStyle arrowStyle = new GUIStyle(GUI.skin.label);
+                arrowStyle.fontSize = 14;
+                arrowStyle.alignment = TextAnchor.MiddleCenter;
+                arrowStyle.normal.textColor = new Color(color.r, color.g, color.b, 0.5f);
+
+                Rect arrowRect = new Rect(startX, iconY, arrowWidth, iconSize);
+                GUI.Label(arrowRect, ">", arrowStyle);
+
+                startX += arrowWidth + spacing;
+            }
+        }
+    }
+
     private void OnGUI()
     {
         // Position track based on setting
@@ -287,7 +388,7 @@ public class TrickTimingUI : MonoBehaviour
 
         // Draw scrolling tricks
         GUIStyle trickStyle = new GUIStyle(GUI.skin.box);
-        trickStyle.alignment = TextAnchor.MiddleCenter;
+        trickStyle.alignment = TextAnchor.UpperCenter;
         trickStyle.fontSize = 14;
         trickStyle.wordWrap = true;
 
@@ -297,26 +398,46 @@ public class TrickTimingUI : MonoBehaviour
             float trickY = Mathf.Lerp(-60f, hitWindowCenterY, progress); // Start above screen
 
             // Set color based on state
+            Color trickColor;
             if (scrollingTrick.completed)
             {
-                GUI.color = new Color(0, 1, 0, 0.5f);
+                trickColor = new Color(0, 1, 0, 0.5f);
             }
             else if (scrollingTrick.missed)
             {
-                GUI.color = new Color(1, 0, 0, 0.5f);
+                trickColor = new Color(1, 0, 0, 0.5f);
             }
             else
             {
-                GUI.color = Color.white;
+                trickColor = Color.white;
             }
 
-            trickStyle.normal.textColor = GUI.color;
+            GUI.color = trickColor;
+            trickStyle.normal.textColor = trickColor;
 
             // Draw trick box
-            float boxHeight = 60f;
-            GUI.Box(new Rect(trackX + 10, trickY - boxHeight / 2, trackWidth - 20, boxHeight),
-                scrollingTrick.trick.trickName + "\n" + scrollingTrick.trick.GetInputSequenceString(),
-                trickStyle);
+            float boxHeight = 80f;
+            float boxWidth = trackWidth - 20;
+            Rect boxRect = new Rect(trackX + 10, trickY - boxHeight / 2, boxWidth, boxHeight);
+
+            // Draw background box with just the trick name
+            GUI.Box(boxRect, scrollingTrick.trick.trickName, trickStyle);
+
+            // Draw input icons below the name
+            if (iconHelper != null && scrollingTrick.trick.inputSequence != null)
+            {
+                DrawInputSequenceIcons(boxRect, scrollingTrick.trick, trickColor);
+            }
+            else
+            {
+                // Fallback to text if no icon helper
+                GUIStyle inputStyle = new GUIStyle(GUI.skin.label);
+                inputStyle.alignment = TextAnchor.MiddleCenter;
+                inputStyle.fontSize = 11;
+                inputStyle.normal.textColor = trickColor;
+                Rect textRect = new Rect(boxRect.x, boxRect.y + 25, boxRect.width, 20);
+                GUI.Label(textRect, scrollingTrick.trick.GetInputSequenceString(), inputStyle);
+            }
         }
 
         // Draw result text in CENTER of screen

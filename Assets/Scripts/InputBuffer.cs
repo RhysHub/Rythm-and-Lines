@@ -14,6 +14,7 @@ public class InputBuffer
     // Configurable thresholds for input classification
     public float flickThreshold = RecordedInput.DEFAULT_FLICK_THRESHOLD;
     public float tapThreshold = RecordedInput.DEFAULT_TAP_THRESHOLD;
+    public float maxDragHoldTime = 0.4f; // Max time to hold a drag before it auto-confirms
 
     // Struct to track where tricks were confirmed in the buffer
     private struct TrickMarker
@@ -38,7 +39,16 @@ public class InputBuffer
     }
 
     /// <summary>
-    /// Marks that a trick was confirmed at this point in the buffer
+    /// Sets the max drag hold time
+    /// </summary>
+    public void SetMaxDragHoldTime(float time)
+    {
+        maxDragHoldTime = time;
+    }
+
+    /// <summary>
+    /// Marks that a trick was confirmed at this point in the buffer.
+    /// Removes the consumed inputs to prevent double-matching.
     /// </summary>
     public void MarkTrickConfirmed(string trickName, int inputCount)
     {
@@ -48,6 +58,17 @@ public class InputBuffer
             trickName = trickName,
             inputCount = inputCount
         });
+
+        // Remove the consumed inputs from the buffer to prevent double-matching
+        // (e.g., preventing pop shuvit AND 360 shuvit from both triggering on the same drag)
+        int removeCount = Mathf.Min(inputCount, buffer.Count);
+        if (removeCount > 0)
+        {
+            buffer.RemoveRange(buffer.Count - removeCount, removeCount);
+        }
+
+        // Clear current held input if it was part of the consumed inputs
+        currentHeldInput = null;
     }
 
     /// <summary>
@@ -92,7 +113,7 @@ public class InputBuffer
         {
             var held = currentHeldInput.Value;
             held.holdDuration = time - held.timestamp;
-            held.dragEndDirection = direction; // Track the new direction as drag end
+            held.UpdateDragDirection(direction); // Track rotation through the drag path
             held.isHeld = true;
             currentHeldInput = held;
 
@@ -104,6 +125,15 @@ public class InputBuffer
         }
         else
         {
+            // Check if there's a pending drag on a DIFFERENT stick - if so, confirm it
+            if (currentHeldInput.HasValue &&
+                currentHeldInput.Value.stickType != stickType &&
+                HasPendingDrag())
+            {
+                // New input on different stick confirms the pending drag
+                ConfirmCurrentDrag();
+            }
+
             // New input
             var input = new RecordedInput(time, stickType, direction, trigger, faceButton, shoulder, leftStickHeld, rightStickHeld);
             buffer.Add(input);
@@ -135,7 +165,8 @@ public class InputBuffer
     }
 
     /// <summary>
-    /// Gets all inputs within the specified time window
+    /// Gets all inputs within the specified time window.
+    /// Includes pending drags that are ready for matching.
     /// </summary>
     public List<RecordedInput> GetRecentInputs(float timeWindow)
     {
@@ -146,11 +177,98 @@ public class InputBuffer
         {
             if (input.timestamp >= cutoffTime)
             {
-                recent.Add(input);
+                // For held inputs with drag end direction, classify them as drags for matching
+                var processedInput = input;
+                if (input.isHeld && input.dragEndDirection != StickDirection.None)
+                {
+                    processedInput.inputType = InputType.Drag;
+                }
+                recent.Add(processedInput);
             }
         }
 
         return recent;
+    }
+
+    /// <summary>
+    /// Checks if there's a pending drag that has exceeded max hold time and should be CANCELLED.
+    /// Drags should only confirm when the next input is made (e.g., LS flick after RS drag).
+    /// </summary>
+    public bool CheckAndCancelExpiredDrag()
+    {
+        if (!currentHeldInput.HasValue) return false;
+
+        var held = currentHeldInput.Value;
+
+        // Check if it's a drag (has end direction different from start)
+        if (held.dragEndDirection != StickDirection.None &&
+            held.dragEndDirection != held.direction)
+        {
+            float holdTime = Time.time - held.timestamp;
+            if (holdTime >= maxDragHoldTime)
+            {
+                // CANCEL the drag - it was held too long without follow-up input
+                CancelCurrentDrag();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Cancels the current drag input (removes it from buffer).
+    /// Called when drag is held too long without follow-up.
+    /// </summary>
+    public void CancelCurrentDrag()
+    {
+        if (!currentHeldInput.HasValue) return;
+
+        // Remove the drag from buffer - it expired
+        if (buffer.Count > 0)
+        {
+            buffer.RemoveAt(buffer.Count - 1);
+        }
+
+        currentHeldInput = null;
+    }
+
+    /// <summary>
+    /// Confirms the current drag input without releasing the stick.
+    /// Called when another input comes in or max hold time exceeded.
+    /// </summary>
+    public void ConfirmCurrentDrag()
+    {
+        if (!currentHeldInput.HasValue) return;
+
+        var held = currentHeldInput.Value;
+
+        // Only confirm if it's actually a drag
+        if (held.dragEndDirection != StickDirection.None &&
+            held.dragEndDirection != held.direction)
+        {
+            held.holdDuration = Time.time - held.timestamp;
+            held.isHeld = false; // Mark as no longer held (confirmed)
+            held.inputType = InputType.Drag;
+
+            if (buffer.Count > 0)
+            {
+                buffer[buffer.Count - 1] = held;
+            }
+
+            currentHeldInput = null;
+        }
+    }
+
+    /// <summary>
+    /// Checks if there's a pending drag ready for matching (but not yet confirmed)
+    /// </summary>
+    public bool HasPendingDrag()
+    {
+        if (!currentHeldInput.HasValue) return false;
+
+        var held = currentHeldInput.Value;
+        return held.dragEndDirection != StickDirection.None &&
+               held.dragEndDirection != held.direction;
     }
 
     /// <summary>

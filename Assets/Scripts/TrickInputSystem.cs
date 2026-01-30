@@ -29,9 +29,20 @@ public class TrickInputSystem : MonoBehaviour
     [Range(0.1f, 0.5f)]
     public float tapThreshold = 0.2f;
 
+    [Tooltip("Max time to hold a drag before it CANCELS if no follow-up input. Drag confirms when next stick input is made (e.g., LS flick after RS drag for 360 flip).")]
+    [Range(0.1f, 1.0f)]
+    public float maxDragHoldTime = 0.4f;
+
     [Tooltip("Delay after last input before confirming a trick (allows time for longer sequences)")]
     [Range(0f, 0.5f)]
     public float confirmationDelay = 0.1f;
+
+    [Tooltip("Cooldown after a trick is confirmed before another can trigger (prevents overlapping tricks)")]
+    [Range(0f, 2.0f)]
+    public float trickCooldown = 0.6f;
+
+    [Tooltip("Reference to TrickAnimator - if set, will also check if animation is playing")]
+    public TrickAnimator trickAnimator;
 
     [Header("Debug")]
     [Tooltip("Show debug info in console")]
@@ -48,6 +59,10 @@ public class TrickInputSystem : MonoBehaviour
 
     [Tooltip("Size of stick indicator circles")]
     public float stickIndicatorSize = 80f;
+
+    [Header("Icon Display")]
+    [Tooltip("Reference to TrickIconHelper for drawing input icons")]
+    public TrickIconHelper iconHelper;
 
     // Components
     private InputReader inputReader;
@@ -73,6 +88,14 @@ public class TrickInputSystem : MonoBehaviour
         inputBuffer = new InputBuffer(bufferDuration);
         inputBuffer.SetThresholds(flickThreshold, tapThreshold);
         trickMatcher = new TrickMatcher();
+
+        // Get icon helper
+        if (iconHelper == null)
+            iconHelper = TrickIconHelper.Instance;
+
+        // Get trick animator
+        if (trickAnimator == null)
+            trickAnimator = FindObjectOfType<TrickAnimator>();
 
         // Load trick database
         if (trickDatabase.Count > 0)
@@ -105,6 +128,16 @@ public class TrickInputSystem : MonoBehaviour
     {
         // Sync thresholds in case they changed in Inspector at runtime
         inputBuffer.SetThresholds(flickThreshold, tapThreshold);
+        inputBuffer.SetMaxDragHoldTime(maxDragHoldTime);
+
+        // Check if pending drag has expired (held too long without follow-up) - CANCEL it
+        if (inputBuffer.CheckAndCancelExpiredDrag())
+        {
+            if (debugMode)
+            {
+                Debug.Log("<color=red>Drag CANCELLED (held too long without follow-up input)</color>");
+            }
+        }
 
         // Continuously try to match tricks as inputs come in
         TryMatchCurrentInputs();
@@ -115,6 +148,9 @@ public class TrickInputSystem : MonoBehaviour
     /// </summary>
     private void HandleStickInput(StickType stickType, StickDirection direction)
     {
+        // Note: Drag confirmation on different-stick input is now handled in InputBuffer.RecordInput()
+        // This allows 360 flip: hold RS drag, then flick LS confirms the drag
+
         // Record the input with current button states and held stick directions
         TriggerButton trigger = inputReader.GetCurrentTrigger();
         FaceButton faceButton = inputReader.GetCurrentFaceButton();
@@ -169,32 +205,52 @@ public class TrickInputSystem : MonoBehaviour
 
         if (result.matched)
         {
-            // Check if this is a better match than pending (more inputs = better)
+            // Check if this is a better match than pending
+            // Priority: 1) more inputs, 2) higher difficulty, 3) better accuracy
             bool shouldUpdatePending = false;
+            bool isUpgrade = false;
 
             if (pendingMatch == null || !pendingMatch.matched)
             {
                 // No pending match, store this one
                 shouldUpdatePending = true;
             }
-            else if (result.trick.inputSequence.Count > pendingMatch.trick.inputSequence.Count)
+            else
             {
-                // New match has more inputs (longer trick), replace pending
-                shouldUpdatePending = true;
+                int newInputs = result.trick.inputSequence.Count;
+                int oldInputs = pendingMatch.trick.inputSequence.Count;
+                int newDiff = result.trick.difficulty;
+                int oldDiff = pendingMatch.trick.difficulty;
 
-                if (debugMode)
+                if (newInputs > oldInputs)
                 {
-                    Debug.Log($"<color=yellow>Upgrading pending match: {pendingMatch.trick.trickName} -> {result.trick.trickName}</color>");
+                    // More inputs = better (e.g., 360 flip beats kickflip)
+                    shouldUpdatePending = true;
+                    isUpgrade = true;
                 }
-            }
-            else if (result.trick == pendingMatch.trick && result.accuracy > pendingMatch.accuracy)
-            {
-                // Same trick but better accuracy, update it
-                shouldUpdatePending = true;
+                else if (newInputs == oldInputs)
+                {
+                    if (newDiff > oldDiff)
+                    {
+                        // Same inputs but harder trick = better (e.g., 360 shuvit beats pop shuvit)
+                        shouldUpdatePending = true;
+                        isUpgrade = true;
+                    }
+                    else if (result.trick == pendingMatch.trick && result.accuracy > pendingMatch.accuracy)
+                    {
+                        // Same trick but better accuracy, update it
+                        shouldUpdatePending = true;
+                    }
+                }
             }
 
             if (shouldUpdatePending)
             {
+                if (isUpgrade && debugMode)
+                {
+                    Debug.Log($"<color=yellow>Upgrading pending match: {pendingMatch.trick.trickName} -> {result.trick.trickName}</color>");
+                }
+
                 pendingMatch = result;
                 pendingMatchTime = Time.time;
 
@@ -221,11 +277,26 @@ public class TrickInputSystem : MonoBehaviour
         if (Time.time - pendingMatchTime < confirmationDelay)
             return;
 
-        // Avoid matching the same trick multiple times in quick succession
-        if (lastMatchedTrick != null &&
-            lastMatchedTrick.trick == pendingMatch.trick &&
-            Time.time - lastMatchTime < 0.5f)
+        // Block new tricks during cooldown (prevents overlapping trick animations)
+        if (Time.time - lastMatchTime < trickCooldown)
         {
+            // Still in cooldown - discard this pending match
+            if (debugMode)
+            {
+                float remaining = trickCooldown - (Time.time - lastMatchTime);
+                Debug.Log($"<color=orange>Trick blocked (cooldown): {pendingMatch.trick.trickName} - {remaining:F2}s remaining</color>");
+            }
+            pendingMatch = null;
+            return;
+        }
+
+        // Also check if animation is still playing
+        if (trickAnimator != null && trickAnimator.IsAnimating)
+        {
+            if (debugMode)
+            {
+                Debug.Log($"<color=orange>Trick blocked (animating): {pendingMatch.trick.trickName}</color>");
+            }
             pendingMatch = null;
             return;
         }
@@ -325,15 +396,33 @@ public class TrickInputSystem : MonoBehaviour
         {
             if (Time.time - lastMatchTime < 2.0f) // Show for 2 seconds
             {
+                float boxWidth = 400f;
+                float boxHeight = 120f;
+                Rect boxRect = new Rect(Screen.width / 2 - boxWidth / 2, 100, boxWidth, boxHeight);
+
                 GUIStyle trickStyle = new GUIStyle(GUI.skin.box);
                 trickStyle.fontSize = 24;
-                trickStyle.alignment = TextAnchor.MiddleCenter;
+                trickStyle.alignment = TextAnchor.UpperCenter;
                 trickStyle.normal.textColor = Color.green;
 
-                string trickText = $"{lastMatchedTrick.trick.trickName}\n" +
-                                  $"{lastMatchedTrick.trick.GetInputSequenceString()}";
+                // Draw box with trick name
+                GUI.Box(boxRect, lastMatchedTrick.trick.trickName, trickStyle);
 
-                GUI.Box(new Rect(Screen.width / 2 - 200, 100, 400, 100), trickText, trickStyle);
+                // Draw input icons below the name
+                if (iconHelper != null && lastMatchedTrick.trick.inputSequence != null)
+                {
+                    DrawTrickInputIcons(boxRect, lastMatchedTrick.trick, Color.green);
+                }
+                else
+                {
+                    // Fallback to text
+                    GUIStyle inputStyle = new GUIStyle(GUI.skin.label);
+                    inputStyle.alignment = TextAnchor.MiddleCenter;
+                    inputStyle.fontSize = 14;
+                    inputStyle.normal.textColor = Color.green;
+                    Rect textRect = new Rect(boxRect.x, boxRect.y + 40, boxRect.width, 30);
+                    GUI.Label(textRect, lastMatchedTrick.trick.GetInputSequenceString(), inputStyle);
+                }
             }
         }
 
@@ -341,6 +430,98 @@ public class TrickInputSystem : MonoBehaviour
         if (showStickIndicators && inputReader != null)
         {
             DrawStickIndicators();
+        }
+    }
+
+    /// <summary>
+    /// Draws input sequence icons for a trick
+    /// </summary>
+    private void DrawTrickInputIcons(Rect boxRect, TrickDefinition trick, Color color)
+    {
+        if (iconHelper == null || trick.inputSequence == null || trick.inputSequence.Count == 0)
+            return;
+
+        int stepCount = trick.inputSequence.Count;
+        float iconSize = 32f;
+        float spacing = 10f;
+        float arrowWidth = 16f;
+
+        // Calculate total width needed
+        float totalWidth = (stepCount * iconSize) + ((stepCount - 1) * (spacing + arrowWidth + spacing));
+
+        // Center the icons horizontally in the box
+        float startX = boxRect.x + (boxRect.width - totalWidth) / 2f;
+        float iconY = boxRect.y + 50f; // Below the trick name
+
+        for (int i = 0; i < stepCount; i++)
+        {
+            InputStep step = trick.inputSequence[i];
+
+            // Draw stick indicator (LS/RS) above the icon
+            GUIStyle stickStyle = new GUIStyle(GUI.skin.label);
+            stickStyle.fontSize = 10;
+            stickStyle.alignment = TextAnchor.MiddleCenter;
+            stickStyle.normal.textColor = step.stickType == StickType.LeftStick ?
+                new Color(0.5f, 0.8f, 1f) : new Color(1f, 0.8f, 0.5f);
+
+            Rect stickLabelRect = new Rect(startX, iconY - 14f, iconSize, 14f);
+            GUI.Label(stickLabelRect, step.stickType == StickType.LeftStick ? "LS" : "RS", stickStyle);
+
+            // Draw the icon
+            Rect iconRect = new Rect(startX, iconY, iconSize, iconSize);
+
+            // For drag inputs with turn type, draw turn icon
+            if (step.inputType == InputType.Drag && step.dragTurnType != DragTurnType.None)
+            {
+                Texture2D turnTex = iconHelper.GetTurnTexture(step.dragTurnType);
+                if (turnTex != null)
+                {
+                    bool flip = TrickIconHelper.ShouldFlipHorizontal(step.dragTurnType);
+                    TrickIconHelper.DrawRotatedTexture(iconRect, turnTex, 0f, color, flip);
+                }
+            }
+            else if (step.direction != StickDirection.None)
+            {
+                // Draw direction arrow
+                if (iconHelper.arrowUp != null)
+                {
+                    float rotation = TrickIconHelper.GetDirectionRotation(step.direction);
+                    TrickIconHelper.DrawRotatedTexture(iconRect, iconHelper.arrowUp, rotation, color);
+                }
+            }
+
+            // Draw input type indicator below icon
+            GUIStyle typeStyle = new GUIStyle(GUI.skin.label);
+            typeStyle.fontSize = 9;
+            typeStyle.alignment = TextAnchor.MiddleCenter;
+            typeStyle.normal.textColor = new Color(color.r, color.g, color.b, 0.7f);
+
+            Rect typeLabelRect = new Rect(startX, iconY + iconSize, iconSize, 12f);
+            string typeLabel = step.inputType == InputType.Drag ? "drag" :
+                              step.inputType == InputType.Flick ? "flick" :
+                              step.inputType == InputType.Hold ? "hold" : "";
+            if (!string.IsNullOrEmpty(typeLabel))
+            {
+                GUI.Label(typeLabelRect, typeLabel, typeStyle);
+            }
+
+            startX += iconSize;
+
+            // Draw arrow between inputs
+            if (i < stepCount - 1)
+            {
+                startX += spacing;
+
+                GUIStyle arrowStyle = new GUIStyle(GUI.skin.label);
+                arrowStyle.fontSize = 16;
+                arrowStyle.alignment = TextAnchor.MiddleCenter;
+                arrowStyle.normal.textColor = new Color(color.r, color.g, color.b, 0.5f);
+
+                Rect arrowRect = new Rect(startX, iconY, arrowWidth, iconSize);
+                GUI.Label(arrowRect, ">", arrowStyle);
+
+                startX += arrowWidth + spacing;
+            }
         }
     }
 

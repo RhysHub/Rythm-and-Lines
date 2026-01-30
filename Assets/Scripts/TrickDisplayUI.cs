@@ -48,10 +48,11 @@ public class TrickDisplayUI : MonoBehaviour
                                    "  Arrow Keys = Right Stick\n" +
                                    "  WASD = Left Stick\n\n" +
                                    "Try these:\n" +
-                                   "Ollie: RS ↑\n" +
-                                   "Kickflip: RS ↗\n" +
-                                   "Heelflip: RS ↖\n" +
-                                   "360 Flip: RS ← ↓ ↗";
+                                   "Ollie: RS D > LS U\n" +
+                                   "Kickflip: RS D > LS UL\n" +
+                                   "Heelflip: RS D > LS UR\n" +
+                                   "360 Flip: RS D (CCW half) > LS UL\n" +
+                                   "Nollie: LS U > RS D";
         }
 
         // Clear trick name initially

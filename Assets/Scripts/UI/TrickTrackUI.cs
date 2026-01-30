@@ -12,6 +12,7 @@ public class TrickTrackUI : MonoBehaviour
     [Header("References")]
     public TrickInputSystem trickInputSystem;
     public Canvas canvas;
+    public TrickIconHelper iconHelper;
 
     [Header("Track Panel")]
     public RectTransform trackPanel;
@@ -86,6 +87,9 @@ public class TrickTrackUI : MonoBehaviour
         if (canvas == null)
             canvas = GetComponentInParent<Canvas>();
 
+        if (iconHelper == null)
+            iconHelper = TrickIconHelper.Instance;
+
         nextSpawnTime = Time.time + 1f;
 
         // Create prefab if not assigned
@@ -139,10 +143,68 @@ public class TrickTrackUI : MonoBehaviour
         rt.anchorMax = new Vector2(1, 1);
         rt.anchoredPosition = new Vector2(0, 30);
 
-        // Set text
+        // Set border color based on first stick used
+        Outline outline = cardObj.GetComponent<Outline>();
+        if (outline != null && trick.inputSequence != null && trick.inputSequence.Count > 0)
+        {
+            StickType firstStick = trick.inputSequence[0].stickType;
+            if (firstStick == StickType.LeftStick)
+            {
+                // Blue for nollie tricks (LS first)
+                outline.effectColor = new Color(0.5f, 0.8f, 1f);
+            }
+            else
+            {
+                // Orange/beige for ollie tricks (RS first)
+                outline.effectColor = new Color(1f, 0.8f, 0.5f);
+            }
+        }
+
+        // Set trick name
         TextMeshProUGUI[] texts = cardObj.GetComponentsInChildren<TextMeshProUGUI>();
         if (texts.Length > 0) texts[0].text = trick.trickName;
-        if (texts.Length > 1) texts[1].text = trick.GetInputSequenceString();
+
+        // Create input icons instead of text
+        if (iconHelper != null && trick.inputSequence != null && trick.inputSequence.Count > 0)
+        {
+            // Find or create icons container
+            Transform iconsContainer = cardObj.transform.Find("IconsContainer");
+            if (iconsContainer == null)
+            {
+                GameObject iconsObj = new GameObject("IconsContainer");
+                iconsObj.transform.SetParent(cardObj.transform);
+                RectTransform iconsRt = iconsObj.AddComponent<RectTransform>();
+                iconsRt.anchorMin = new Vector2(0, 0);
+                iconsRt.anchorMax = new Vector2(1, 0.5f);
+                iconsRt.offsetMin = new Vector2(5, 5);
+                iconsRt.offsetMax = new Vector2(-5, 0);
+                iconsContainer = iconsObj.transform;
+
+                // Add horizontal layout
+                UnityEngine.UI.HorizontalLayoutGroup layout = iconsObj.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
+                layout.spacing = 4f;
+                layout.childAlignment = TextAnchor.MiddleCenter;
+                layout.childControlWidth = false;
+                layout.childControlHeight = false;
+            }
+
+            // Clear existing icons
+            foreach (Transform child in iconsContainer)
+            {
+                Destroy(child.gameObject);
+            }
+
+            // Create icons for each step
+            CreateInputIcons(iconsContainer, trick);
+
+            // Hide the text input sequence if it exists
+            if (texts.Length > 1) texts[1].gameObject.SetActive(false);
+        }
+        else if (texts.Length > 1)
+        {
+            // Fallback to text
+            texts[1].text = trick.GetInputSequenceString();
+        }
 
         var card = new ScrollingTrickCard
         {
@@ -156,6 +218,81 @@ public class TrickTrackUI : MonoBehaviour
         };
 
         activeCards.Add(card);
+    }
+
+    private void CreateInputIcons(Transform container, TrickDefinition trick)
+    {
+        float iconSize = 20f;
+
+        for (int i = 0; i < trick.inputSequence.Count; i++)
+        {
+            InputStep step = trick.inputSequence[i];
+
+            // Create step container
+            GameObject stepObj = new GameObject($"Step_{i}");
+            stepObj.transform.SetParent(container);
+            RectTransform stepRt = stepObj.AddComponent<RectTransform>();
+            stepRt.sizeDelta = new Vector2(iconSize + 4, iconSize + 12);
+
+            // Create stick label (LS/RS)
+            GameObject labelObj = new GameObject("StickLabel");
+            labelObj.transform.SetParent(stepObj.transform);
+            RectTransform labelRt = labelObj.AddComponent<RectTransform>();
+            labelRt.anchorMin = new Vector2(0.5f, 1);
+            labelRt.anchorMax = new Vector2(0.5f, 1);
+            labelRt.anchoredPosition = new Vector2(0, -5);
+            labelRt.sizeDelta = new Vector2(iconSize, 10);
+
+            TextMeshProUGUI labelTmp = labelObj.AddComponent<TextMeshProUGUI>();
+            labelTmp.text = step.stickType == StickType.LeftStick ? "LS" : "RS";
+            labelTmp.fontSize = 8;
+            labelTmp.alignment = TextAlignmentOptions.Center;
+            labelTmp.color = step.stickType == StickType.LeftStick ?
+                new Color(0.5f, 0.8f, 1f) : new Color(1f, 0.8f, 0.5f);
+
+            // Create icon
+            GameObject iconObj = new GameObject("Icon");
+            iconObj.transform.SetParent(stepObj.transform);
+            RectTransform iconRt = iconObj.AddComponent<RectTransform>();
+            iconRt.anchorMin = new Vector2(0.5f, 0.5f);
+            iconRt.anchorMax = new Vector2(0.5f, 0.5f);
+            iconRt.anchoredPosition = new Vector2(0, -2);
+            iconRt.sizeDelta = new Vector2(iconSize, iconSize);
+
+            RawImage iconImg = iconObj.AddComponent<RawImage>();
+            iconImg.color = Color.white;
+
+            // Set texture and rotation
+            if (step.inputType == InputType.Drag && step.dragTurnType != DragTurnType.None)
+            {
+                iconImg.texture = iconHelper.GetTurnTexture(step.dragTurnType);
+                if (TrickIconHelper.ShouldFlipHorizontal(step.dragTurnType))
+                {
+                    iconRt.localScale = new Vector3(-1, 1, 1);
+                }
+            }
+            else if (step.direction != StickDirection.None && iconHelper.arrowUp != null)
+            {
+                iconImg.texture = iconHelper.arrowUp;
+                float rotation = TrickIconHelper.GetDirectionRotation(step.direction);
+                iconRt.localRotation = Quaternion.Euler(0, 0, rotation);
+            }
+
+            // Add arrow between steps
+            if (i < trick.inputSequence.Count - 1)
+            {
+                GameObject arrowObj = new GameObject("Arrow");
+                arrowObj.transform.SetParent(container);
+                RectTransform arrowRt = arrowObj.AddComponent<RectTransform>();
+                arrowRt.sizeDelta = new Vector2(10, iconSize);
+
+                TextMeshProUGUI arrowTmp = arrowObj.AddComponent<TextMeshProUGUI>();
+                arrowTmp.text = ">";
+                arrowTmp.fontSize = 12;
+                arrowTmp.alignment = TextAlignmentOptions.Center;
+                arrowTmp.color = new Color(0.6f, 0.6f, 0.6f);
+            }
+        }
     }
 
     private void UpdateCards()
@@ -487,6 +624,11 @@ public class TrickTrackUI : MonoBehaviour
 
         Image bg = card.AddComponent<Image>();
         bg.color = new Color(0.2f, 0.2f, 0.3f, 0.9f);
+
+        // Add outline for stick-type border (color set at spawn time)
+        Outline outline = card.AddComponent<Outline>();
+        outline.effectColor = Color.white;
+        outline.effectDistance = new Vector2(3, 3);
 
         // Trick name
         GameObject nameObj = new GameObject("TrickName");

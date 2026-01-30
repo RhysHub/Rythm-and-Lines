@@ -70,15 +70,15 @@ public static class StickDirectionExtensions
     {
         return direction switch
         {
-            StickDirection.Up => "↑",
-            StickDirection.UpRight => "↗",
-            StickDirection.Right => "→",
-            StickDirection.DownRight => "↘",
-            StickDirection.Down => "↓",
-            StickDirection.DownLeft => "↙",
-            StickDirection.Left => "←",
-            StickDirection.UpLeft => "↖",
-            _ => "○"
+            StickDirection.Up => "U",
+            StickDirection.UpRight => "UR",
+            StickDirection.Right => "R",
+            StickDirection.DownRight => "DR",
+            StickDirection.Down => "D",
+            StickDirection.DownLeft => "DL",
+            StickDirection.Left => "L",
+            StickDirection.UpLeft => "UL",
+            _ => "O"
         };
     }
 

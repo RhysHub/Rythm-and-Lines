@@ -10,30 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2976e0a229a63cb4eb656bec1bedc790, type: 3}
-  m_Name: VarialKickflip
+  m_Name: BS_360Shuvit
   m_EditorClassIdentifier:
-  trickName: Varial Kickflip
-  category: 0
+  trickName: BS 360 Shuvit
+  category: 1
   requiredStance: 0
   difficulty: 3
   inputSequence:
   - stickType: 0
-    direction: 6
-    inputType: 2
-    dragEndDirection: 0
-    minHoldDuration: 0.1
-    maxStepTime: 0.15
-    requiredTrigger: 0
-    requiredFaceButton: 0
-    requiredShoulder: 0
-    requiredLeftStickHeld: 0
-    requiredRightStickHeld: 0
-  - stickType: 1
-    direction: 8
-    inputType: 2
-    dragEndDirection: 0
-    minHoldDuration: 0.1
-    maxStepTime: 0.15
+    direction: 5
+    inputType: 3
+    dragEndDirection: 8
+    dragTurnType: 2
+    minHoldDuration: 0.15
+    maxStepTime: 0.4
     requiredTrigger: 0
     requiredFaceButton: 0
     requiredShoulder: 0

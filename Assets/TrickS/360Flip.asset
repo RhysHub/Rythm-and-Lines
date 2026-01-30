@@ -21,6 +21,7 @@ MonoBehaviour:
     direction: 5
     inputType: 3
     dragEndDirection: 7
+    dragTurnType: 2
     minHoldDuration: 0.1
     maxStepTime: 0.3
     requiredTrigger: 0

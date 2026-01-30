@@ -46,7 +46,7 @@ public class TrickMatcher
     /// <summary>
     /// Attempts to match recent inputs against all tricks in the database
     /// Returns the best matching trick, or null if no match
-    /// Prioritizes longer input sequences over shorter ones (e.g., 360 flip over kickflip)
+    /// Priority: 1) longer input sequences, 2) higher difficulty, 3) better accuracy
     /// </summary>
     public TrickMatchResult MatchTrick(List<RecordedInput> recentInputs, float timeWindow)
     {
@@ -55,6 +55,7 @@ public class TrickMatcher
 
         TrickMatchResult bestMatch = new TrickMatchResult();
         int bestInputCount = 0;
+        int bestDifficulty = 0;
         float bestScore = 0f;
 
         // Try to match against each trick
@@ -68,13 +69,34 @@ public class TrickMatcher
             if (result.matched)
             {
                 int inputCount = trick.inputSequence.Count;
+                int difficulty = trick.difficulty;
 
-                // Prefer longer input sequences (more complex tricks)
-                // Only use accuracy as tiebreaker for equal-length sequences
-                if (inputCount > bestInputCount ||
-                    (inputCount == bestInputCount && result.accuracy > bestScore))
+                // Priority: 1) more inputs, 2) higher difficulty, 3) better accuracy
+                bool isBetterMatch = false;
+
+                if (inputCount > bestInputCount)
+                {
+                    // More inputs = better (e.g., 360 flip beats kickflip)
+                    isBetterMatch = true;
+                }
+                else if (inputCount == bestInputCount)
+                {
+                    if (difficulty > bestDifficulty)
+                    {
+                        // Same inputs but harder trick = better (e.g., 360 shuvit beats pop shuvit)
+                        isBetterMatch = true;
+                    }
+                    else if (difficulty == bestDifficulty && result.accuracy > bestScore)
+                    {
+                        // Same inputs and difficulty, use accuracy as final tiebreaker
+                        isBetterMatch = true;
+                    }
+                }
+
+                if (isBetterMatch)
                 {
                     bestInputCount = inputCount;
+                    bestDifficulty = difficulty;
                     bestScore = result.accuracy;
                     bestMatch = result;
                 }
@@ -214,13 +236,24 @@ public class TrickMatcher
         }
         else if (required.inputType == InputType.Drag)
         {
-            // For drags, verify the input was classified as a drag and end direction matches
+            // For drags, verify the input was classified as a drag
             if (actual.inputType != InputType.Drag)
             {
                 return 0f; // Not a drag input
             }
-            if (actual.dragEndDirection != required.dragEndDirection)
+
+            // Prefer matching by turn type if specified, fallback to end direction
+            if (required.dragTurnType != DragTurnType.None)
             {
+                // Match by turn type (direction and rotation amount)
+                if (actual.dragTurnType != required.dragTurnType)
+                {
+                    return 0f; // Wrong turn type
+                }
+            }
+            else if (actual.dragEndDirection != required.dragEndDirection)
+            {
+                // Legacy: match by end direction only
                 return 0f; // Drag ended in wrong direction
             }
         }

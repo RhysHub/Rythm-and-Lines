@@ -27,8 +27,11 @@ public class InputStep
     [Tooltip("Type of input (tap, hold, flick, drag)")]
     public InputType inputType;
 
-    [Tooltip("For drags: the ending direction")]
+    [Tooltip("For drags: the ending direction (legacy - use dragTurnType instead)")]
     public StickDirection dragEndDirection;
+
+    [Tooltip("For drags: the type of turn (direction and amount)")]
+    public DragTurnType dragTurnType = DragTurnType.None;
 
     [Tooltip("For holds: minimum duration in seconds")]
     public float minHoldDuration = 0.1f;
@@ -90,7 +93,12 @@ public class InputStep
         if (inputType == InputType.Hold)
             result += " (hold)";
         else if (inputType == InputType.Drag)
-            result += $"{dragEndDirection.ToReadableString()}";
+        {
+            if (dragTurnType != DragTurnType.None)
+                result += $" ({dragTurnType.ToReadableString()})";
+            else
+                result += $"->{dragEndDirection.ToReadableString()}";
+        }
 
         return result;
     }
