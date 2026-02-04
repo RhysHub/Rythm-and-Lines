@@ -277,6 +277,17 @@ public class TrickInputSystem : MonoBehaviour
         if (Time.time - pendingMatchTime < confirmationDelay)
             return;
 
+        // Don't confirm while there's a held input - user might still be inputting a more complex trick
+        // This prevents Ollie from confirming while user is doing a 360 drag for FS Impossible, etc.
+        if (inputBuffer.HasHeldInput())
+        {
+            if (debugMode)
+            {
+                Debug.Log($"<color=yellow>Trick delayed (input held): {pendingMatch.trick.trickName}</color>");
+            }
+            return; // Don't discard, just wait
+        }
+
         // Block new tricks during cooldown (prevents overlapping trick animations)
         if (Time.time - lastMatchTime < trickCooldown)
         {

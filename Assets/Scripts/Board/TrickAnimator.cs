@@ -313,15 +313,31 @@ public class TrickAnimator : MonoBehaviour
     }
 
     /// <summary>
-    /// Analyzes drag input for shuvit rotations
+    /// Analyzes drag input for shuvit rotations (or Impossible vertical rotation)
     /// </summary>
     private void AnalyzeDragInput(InputStep step, ref TrickAnimationData anim)
     {
         // If dragTurnType is specified, use it directly for rotation
         if (step.dragTurnType != DragTurnType.None)
         {
-            // Get shuvit rotation from turn type (positive = BS/CCW, negative = FS/CW)
-            anim.yRotation += step.dragTurnType.GetShuvitRotation();
+            // Check for Impossible: full 360 drag where start and end are same direction
+            // This indicates a vertical wrap (X rotation) instead of horizontal shuvit (Y rotation)
+            bool isImpossible = (step.dragTurnType == DragTurnType.CCW_Full ||
+                                 step.dragTurnType == DragTurnType.CW_Full) &&
+                                step.direction == step.dragEndDirection;
+
+            if (isImpossible)
+            {
+                // Impossible - vertical wrap (X-axis rotation)
+                // CCW = nose goes down (forward wrap), CW = nose goes up (backward wrap)
+                float rotation = step.dragTurnType == DragTurnType.CCW_Full ? 360f : -360f;
+                anim.xRotation += rotation;
+            }
+            else
+            {
+                // Regular shuvit - horizontal spin (Y-axis rotation)
+                anim.yRotation += step.dragTurnType.GetShuvitRotation();
+            }
             return;
         }
 

@@ -90,14 +90,14 @@ public static class DragTurnTypeExtensions
     {
         return turnType switch
         {
-            DragTurnType.CCW_Quarter => 180f,       // Pop shuvit (BS)
-            DragTurnType.CCW_Half => 360f,          // 360 shuvit (BS)
-            DragTurnType.CCW_ThreeQuarter => 540f,  // 540 shuvit (BS)
-            DragTurnType.CCW_Full => 720f,          // 720 shuvit (BS)
-            DragTurnType.CW_Quarter => -180f,       // Pop shuvit (FS)
-            DragTurnType.CW_Half => -360f,          // 360 shuvit (FS)
-            DragTurnType.CW_ThreeQuarter => -540f,  // 540 shuvit (FS)
-            DragTurnType.CW_Full => -720f,          // 720 shuvit (FS)
+            DragTurnType.CCW_Quarter => -180f,      // Pop shuvit (BS)
+            DragTurnType.CCW_Half => -360f,         // 360 shuvit (BS)
+            DragTurnType.CCW_ThreeQuarter => -540f, // 540 shuvit (BS)
+            DragTurnType.CCW_Full => -720f,         // 720 shuvit (BS)
+            DragTurnType.CW_Quarter => 180f,        // Pop shuvit (FS)
+            DragTurnType.CW_Half => 360f,           // 360 shuvit (FS)
+            DragTurnType.CW_ThreeQuarter => 540f,   // 540 shuvit (FS)
+            DragTurnType.CW_Full => 720f,           // 720 shuvit (FS)
             _ => 0f
         };
     }

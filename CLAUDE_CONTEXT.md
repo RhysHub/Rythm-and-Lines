@@ -38,7 +38,7 @@ This file maintains context for Claude Code sessions. Read this first when start
 - **TrickInputSystem.cs** - Main orchestrator, manages detection and matching
 
 **Trick Database Location:** `Assets/TrickS/`
-Available tricks: Ollie, Kickflip, Heelflip, FS/BS Pop-Shuvit, 360 Flip, Varial Kickflip, 50-50 Grind, Boardslide
+Available tricks: Ollie, Kickflip, Heelflip, FS/BS Pop-Shuvit, FS/BS 360 Shuvit, 360 Flip, Varial Kickflip, Varial Heelflip, Hardflip, Inward Heelflip, Laser Flip, Nollie, Nollie Kickflip, Nollie Heelflip
 
 ### Debug/Test System
 - **TrickInputSystem.cs:199-229** - OnGUI debug display (top-left corner)
@@ -79,6 +79,7 @@ Assets/
 │   ├── GroundDetector.cs
 │   ├── StickDirection.cs
 │   ├── StickType.cs
+│   ├── DragTurnType.cs
 │   └── TriggerButton.cs (also contains FaceButton, ShoulderButton enums)
 ├── Scenes/
 │   ├── SampleScene.unity
@@ -413,3 +414,91 @@ Systems (empty GameObject)
 - Endless runner world movement with steering curves
 - Procedural trick animations generated from TrickDefinition data
 - Animation curves for pop height and rotation timing
+
+### 2026-01-29: New Flip Tricks Added
+**Files Created:**
+- `Assets/TrickS/VarialKickflip.asset`
+- `Assets/TrickS/VarialHeelflip.asset`
+- `Assets/TrickS/Hardflip.asset`
+- `Assets/TrickS/InwardHeelflip.asset`
+- `Assets/TrickS/LaserFlip.asset`
+- `Assets/TrickS/Nollie.asset`
+- `Assets/TrickS/NollieKickflip.asset`
+- `Assets/TrickS/NollieHeelflip.asset`
+- `Assets/TrickS/BS_360Shuvit.asset`
+- `Assets/TrickS/FS_360Shuvit.asset`
+
+**Trick Input Mapping:**
+| Trick | Input | Difficulty |
+|-------|-------|------------|
+| Varial Kickflip | RS DL (flick) -> LS UL (flick) | 3 |
+| Varial Heelflip | RS DR (flick) -> LS UR (flick) | 3 |
+| Hardflip | RS D->R (drag) -> LS UL (flick) | 4 |
+| Inward Heelflip | RS D->L (drag) -> LS UR (flick) | 4 |
+| Laser Flip | RS D->R (drag, longer) -> LS UR (flick) | 5 |
+| Nollie | LS D (flick) -> RS U (flick) | 2 |
+| Nollie Kickflip | LS D (flick) -> RS UL (flick) | 3 |
+| Nollie Heelflip | LS D (flick) -> RS UR (flick) | 3 |
+| BS 360 Shuvit | RS D->UL (drag, CCW_Half) | 3 |
+| FS 360 Shuvit | RS D->UR (drag, CW_Half) | 3 |
+
+### 2026-01-29: ASCII Direction Display
+**Files Modified:** `StickDirection.cs`, `InputStep.cs`
+
+**Change:** Replaced Unicode arrows with ASCII abbreviations for better font compatibility.
+
+| Direction | Old | New |
+|-----------|-----|-----|
+| Up | (unicode arrow) | U |
+| UpRight | (unicode arrow) | UR |
+| Right | (unicode arrow) | R |
+| DownRight | (unicode arrow) | DR |
+| Down | (unicode arrow) | D |
+| DownLeft | (unicode arrow) | DL |
+| Left | (unicode arrow) | L |
+| UpLeft | (unicode arrow) | UL |
+
+### 2026-01-29: Trick Priority by Difficulty
+**Files Modified:** `TrickMatcher.cs`, `TrickInputSystem.cs`
+
+**Problem:** Tricks with same input count (e.g., BS Pop-Shuvit and BS 360 Shuvit) would conflict.
+
+**Solution:** Added difficulty as secondary priority after input count.
+
+**Priority order:**
+1. More input steps wins
+2. Higher difficulty wins (same input count)
+3. Higher accuracy wins (tiebreaker)
+
+### 2026-01-29: Drag Turn Type System
+**Files Created:** `Assets/Scripts/DragTurnType.cs`
+
+**Files Modified:** `InputStep.cs`, `RecordedInput.cs`, `InputBuffer.cs`, `TrickMatcher.cs`, `TrickAnimator.cs`
+
+**Problem:** Drag inputs only tracked start/end direction, not the path. A 360 shuvit (Down->Up via Left) was indistinguishable from going the other way (Down->Up via Right).
+
+**Solution:** Track accumulated rotation during drag and classify into turn types.
+
+**DragTurnType Enum:**
+| Value | Name | Stick Rotation | Board Result |
+|-------|------|----------------|--------------|
+| 0 | None | - | - |
+| 1 | CCW_Quarter | 90 left | 180 BS shuvit |
+| 2 | CCW_Half | 180 left | 360 BS shuvit |
+| 3 | CCW_ThreeQuarter | 270 left | - |
+| 4 | CCW_Full | 360 left | - |
+| 5 | CW_Quarter | 90 right | 180 FS shuvit |
+| 6 | CW_Half | 180 right | 360 FS shuvit |
+| 7 | CW_ThreeQuarter | 270 right | - |
+| 8 | CW_Full | 360 right | - |
+
+**How it works:**
+1. `InputBuffer` tracks drag path through each direction change
+2. `RecordedInput.UpdateDragDirection()` calculates accumulated rotation
+3. Rotation classified into nearest turn type (45-degree threshold)
+4. `TrickMatcher` matches by turn type (or falls back to legacy dragEndDirection)
+5. `TrickAnimator` uses turn type for animation rotation
+
+**New InputStep field:** `dragTurnType` - Dropdown picker in Unity Inspector
+
+**Backwards Compatible:** If `dragTurnType == None`, falls back to `dragEndDirection` matching

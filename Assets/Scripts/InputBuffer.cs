@@ -296,6 +296,14 @@ public class InputBuffer
     }
 
     /// <summary>
+    /// Checks if there's any input currently being held
+    /// </summary>
+    public bool HasHeldInput()
+    {
+        return currentHeldInput.HasValue;
+    }
+
+    /// <summary>
     /// Clears all recorded inputs
     /// </summary>
     public void Clear()

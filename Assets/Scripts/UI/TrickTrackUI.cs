@@ -13,6 +13,7 @@ public class TrickTrackUI : MonoBehaviour
     public TrickInputSystem trickInputSystem;
     public Canvas canvas;
     public TrickIconHelper iconHelper;
+    public WorldspaceTrickMarker worldspaceMarker;
 
     [Header("Track Panel")]
     public RectTransform trackPanel;
@@ -89,6 +90,9 @@ public class TrickTrackUI : MonoBehaviour
 
         if (iconHelper == null)
             iconHelper = TrickIconHelper.Instance;
+
+        if (worldspaceMarker == null)
+            worldspaceMarker = FindObjectOfType<WorldspaceTrickMarker>();
 
         nextSpawnTime = Time.time + 1f;
 
@@ -218,6 +222,12 @@ public class TrickTrackUI : MonoBehaviour
         };
 
         activeCards.Add(card);
+
+        // Also spawn worldspace marker
+        if (worldspaceMarker != null)
+        {
+            worldspaceMarker.SpawnMarker(trick);
+        }
     }
 
     private void CreateInputIcons(Transform container, TrickDefinition trick)
